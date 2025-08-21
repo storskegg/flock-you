@@ -1,4 +1,4 @@
-# Flock Squawk - Enhanced Flock Safety Detector
+# Flock You - Enhanced Flock Safety Detector
 
 A PlatformIO project for the Xiao ESP32 S3 that detects Flock Safety cameras via **multiple detection methodologies** including WiFi sniffing, BLE scanning, MAC address detection, and device name patterns.
 
