@@ -1,6 +1,6 @@
 # Flock You: Flock Safety Detection System
 
-![Flock You](flock.png)
+<img src="flock.png" alt="Flock You" height="50%">
 
 **Professional surveillance camera detection for the Oui-Spy device available at [colonelpanic.tech](https://colonelpanic.tech)**
 
@@ -31,16 +31,24 @@ Flock You is an advanced detection system designed to identify Flock Safety surv
 
 ## Hardware Requirements
 
-### Oui-Spy Device (Available at colonelpanic.tech)
+### Option 1: Oui-Spy Device (Available at colonelpanic.tech)
 - **Microcontroller**: Xiao ESP32 S3
 - **Display**: 5-inch 1280x720 IPS TFT with multi-touch
 - **Wireless**: Dual WiFi/BLE scanning capabilities
 - **Audio**: Built-in buzzer system
 - **Connectivity**: USB-C for programming and power
 
-### Additional Components
-- **Buzzer**: Connected to GPIO3 (D2) for audio alerts
-- **Power**: USB-C power supply or battery pack
+### Option 2: Standard Xiao ESP32 S3 Setup
+- **Microcontroller**: Xiao ESP32 S3 board
+- **Buzzer**: 3V buzzer connected to GPIO3 (D2)
+- **Power**: USB-C cable for programming and power
+
+### Wiring for Standard Setup
+```
+Xiao ESP32 S3    Buzzer
+GPIO3 (D2)  ---> Positive (+)
+GND         ---> Negative (-)
+```
 
 ## Installation
 
@@ -223,7 +231,7 @@ This project is based on extensive research and public datasets from the surveil
 
 - **[GainSec](https://github.com/GainSec)** - OSINT and privacy research
   - Specialized in surveillance technology analysis and detection methodologies
-  - Contributed foundational research on Flock Safety device signatures
+  - **Research referenced**: Some methodologies are based on their published research on surveillance technology
 
 ### Methodology Integration
 Flock You unifies multiple known detection methodologies into a comprehensive scanner/wardriver specifically designed for Flock Safety cameras and similar surveillance devices. The system combines:
