@@ -487,7 +487,7 @@ void setup()
     Serial.begin(115200);
     delay(1000);
     
-    display_banner();
+    
     
     // Initialize buzzer
     pinMode(BUZZER_PIN, OUTPUT);
