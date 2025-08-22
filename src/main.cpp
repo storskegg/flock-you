@@ -20,9 +20,12 @@
 
 // Audio Configuration
 #define LOW_FREQ 200      // Boot sequence - low pitch
-#define MED_FREQ 400      // Boot sequence - medium pitch  
-#define HIGH_FREQ 800     // Detection alert - high pitch
-#define BEEP_DURATION 200 // milliseconds per beep
+#define HIGH_FREQ 800     // Boot sequence - high pitch & detection alert
+#define DETECT_FREQ 1000  // Detection alert - high pitch (faster beeps)
+#define HEARTBEAT_FREQ 600 // Heartbeat pulse frequency
+#define BOOT_BEEP_DURATION 300   // Boot beep duration
+#define DETECT_BEEP_DURATION 150 // Detection beep duration (faster)
+#define HEARTBEAT_DURATION 100   // Short heartbeat pulse
 
 // WiFi Promiscuous Mode Configuration
 #define MAX_CHANNEL 13
@@ -79,6 +82,9 @@ static const char* device_name_patterns[] = {
 static uint8_t current_channel = 1;
 static unsigned long last_channel_hop = 0;
 static bool triggered = false;
+static bool device_in_range = false;
+static unsigned long last_detection_time = 0;
+static unsigned long last_heartbeat = 0;
 static NimBLEScan* pBLEScan;
 
 // ============================================================================
@@ -122,20 +128,32 @@ void beep(int frequency, int duration_ms)
 void boot_beep_sequence()
 {
     printf("Initializing audio system...\n");
-    printf("Playing boot sequence: Low -> Medium pitch\n");
-    beep(LOW_FREQ, BEEP_DURATION);
-    beep(MED_FREQ, BEEP_DURATION);
+    printf("Playing boot sequence: Low -> High pitch\n");
+    beep(LOW_FREQ, BOOT_BEEP_DURATION);
+    beep(HIGH_FREQ, BOOT_BEEP_DURATION);
     printf("Audio system ready\n\n");
 }
 
 void flock_detected_beep_sequence()
 {
     printf("FLOCK SAFETY DEVICE DETECTED!\n");
-    printf("Playing alert sequence: 3 high-pitch beeps\n");
+    printf("Playing alert sequence: 3 fast high-pitch beeps\n");
     for (int i = 0; i < 3; i++) {
-        beep(HIGH_FREQ, BEEP_DURATION);
+        beep(DETECT_FREQ, DETECT_BEEP_DURATION);
+        if (i < 2) delay(50); // Short gap between beeps
     }
     printf("Detection complete - device identified!\n\n");
+    
+    // Mark device as in range and start heartbeat tracking
+    device_in_range = true;
+    last_detection_time = millis();
+    last_heartbeat = millis();
+}
+
+void heartbeat_pulse()
+{
+    printf("Heartbeat: Device still in range\n");
+    beep(HEARTBEAT_FREQ, HEARTBEAT_DURATION);
 }
 
 // ============================================================================
@@ -144,25 +162,67 @@ void flock_detected_beep_sequence()
 
 void output_wifi_detection_json(const char* ssid, const uint8_t* mac, int rssi, const char* detection_type)
 {
-    DynamicJsonDocument doc(1024);
+    DynamicJsonDocument doc(2048);
     
+    // Core detection info
     doc["timestamp"] = millis();
-    doc["type"] = "wifi";
+    doc["detection_time"] = String(millis() / 1000.0, 3) + "s";
+    doc["protocol"] = "wifi";
     doc["detection_method"] = detection_type;
-    doc["ssid"] = ssid;
-    doc["rssi"] = rssi;
+    doc["alert_level"] = "HIGH";
+    doc["device_category"] = "FLOCK_SAFETY";
     
+    // WiFi specific info
+    doc["ssid"] = ssid;
+    doc["ssid_length"] = strlen(ssid);
+    doc["rssi"] = rssi;
+    doc["signal_strength"] = rssi > -50 ? "STRONG" : (rssi > -70 ? "MEDIUM" : "WEAK");
+    doc["channel"] = current_channel;
+    
+    // MAC address info
     char mac_str[18];
     snprintf(mac_str, sizeof(mac_str), "%02x:%02x:%02x:%02x:%02x:%02x", 
              mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-    doc["mac"] = mac_str;
+    doc["mac_address"] = mac_str;
     
-    // Add matching pattern info
+    char mac_prefix[9];
+    snprintf(mac_prefix, sizeof(mac_prefix), "%02x:%02x:%02x", mac[0], mac[1], mac[2]);
+    doc["mac_prefix"] = mac_prefix;
+    doc["vendor_oui"] = mac_prefix;
+    
+    // Detection pattern matching
+    bool ssid_match = false;
+    bool mac_match = false;
+    
     for (int i = 0; i < sizeof(wifi_ssid_patterns)/sizeof(wifi_ssid_patterns[0]); i++) {
         if (strcasestr(ssid, wifi_ssid_patterns[i])) {
-            doc["matched_pattern"] = wifi_ssid_patterns[i];
+            doc["matched_ssid_pattern"] = wifi_ssid_patterns[i];
+            doc["ssid_match_confidence"] = "HIGH";
+            ssid_match = true;
             break;
         }
+    }
+    
+    for (int i = 0; i < sizeof(mac_prefixes)/sizeof(mac_prefixes[0]); i++) {
+        if (strncasecmp(mac_prefix, mac_prefixes[i], 8) == 0) {
+            doc["matched_mac_pattern"] = mac_prefixes[i];
+            doc["mac_match_confidence"] = "HIGH";
+            mac_match = true;
+            break;
+        }
+    }
+    
+    // Detection summary
+    doc["detection_criteria"] = ssid_match && mac_match ? "SSID_AND_MAC" : (ssid_match ? "SSID_ONLY" : "MAC_ONLY");
+    doc["threat_score"] = ssid_match && mac_match ? 100 : (ssid_match || mac_match ? 85 : 70);
+    
+    // Frame type details
+    if (strcmp(detection_type, "probe_request") == 0 || strcmp(detection_type, "probe_request_mac") == 0) {
+        doc["frame_type"] = "PROBE_REQUEST";
+        doc["frame_description"] = "Device actively scanning for networks";
+    } else {
+        doc["frame_type"] = "BEACON";
+        doc["frame_description"] = "Device advertising its network";
     }
     
     String json_output;
@@ -172,33 +232,82 @@ void output_wifi_detection_json(const char* ssid, const uint8_t* mac, int rssi, 
 
 void output_ble_detection_json(const char* mac, const char* name, int rssi, const char* detection_method)
 {
-    DynamicJsonDocument doc(1024);
+    DynamicJsonDocument doc(2048);
     
+    // Core detection info
     doc["timestamp"] = millis();
-    doc["type"] = "ble";
+    doc["detection_time"] = String(millis() / 1000.0, 3) + "s";
+    doc["protocol"] = "bluetooth_le";
     doc["detection_method"] = detection_method;
-    doc["mac"] = mac;
-    doc["rssi"] = rssi;
+    doc["alert_level"] = "HIGH";
+    doc["device_category"] = "FLOCK_SAFETY";
     
+    // BLE specific info
+    doc["mac_address"] = mac;
+    doc["rssi"] = rssi;
+    doc["signal_strength"] = rssi > -50 ? "STRONG" : (rssi > -70 ? "MEDIUM" : "WEAK");
+    
+    // Device name info
     if (name && strlen(name) > 0) {
         doc["device_name"] = name;
+        doc["device_name_length"] = strlen(name);
+        doc["has_device_name"] = true;
+    } else {
+        doc["device_name"] = "";
+        doc["device_name_length"] = 0;
+        doc["has_device_name"] = false;
     }
     
-    // Add matching pattern info
-    if (strcmp(detection_method, "mac_prefix") == 0) {
-        for (int i = 0; i < sizeof(mac_prefixes)/sizeof(mac_prefixes[0]); i++) {
-            if (strncasecmp(mac, mac_prefixes[i], strlen(mac_prefixes[i])) == 0) {
-                doc["matched_pattern"] = mac_prefixes[i];
-                break;
-            }
+    // MAC address analysis
+    char mac_prefix[9];
+    strncpy(mac_prefix, mac, 8);
+    mac_prefix[8] = '\0';
+    doc["mac_prefix"] = mac_prefix;
+    doc["vendor_oui"] = mac_prefix;
+    
+    // Detection pattern matching
+    bool name_match = false;
+    bool mac_match = false;
+    
+    // Check MAC prefix patterns
+    for (int i = 0; i < sizeof(mac_prefixes)/sizeof(mac_prefixes[0]); i++) {
+        if (strncasecmp(mac, mac_prefixes[i], strlen(mac_prefixes[i])) == 0) {
+            doc["matched_mac_pattern"] = mac_prefixes[i];
+            doc["mac_match_confidence"] = "HIGH";
+            mac_match = true;
+            break;
         }
-    } else if (strcmp(detection_method, "device_name") == 0) {
+    }
+    
+    // Check device name patterns
+    if (name && strlen(name) > 0) {
         for (int i = 0; i < sizeof(device_name_patterns)/sizeof(device_name_patterns[0]); i++) {
-            if (name && strcasestr(name, device_name_patterns[i])) {
-                doc["matched_pattern"] = device_name_patterns[i];
+            if (strcasestr(name, device_name_patterns[i])) {
+                doc["matched_name_pattern"] = device_name_patterns[i];
+                doc["name_match_confidence"] = "HIGH";
+                name_match = true;
                 break;
             }
         }
+    }
+    
+    // Detection summary
+    doc["detection_criteria"] = name_match && mac_match ? "NAME_AND_MAC" : 
+                               (name_match ? "NAME_ONLY" : "MAC_ONLY");
+    doc["threat_score"] = name_match && mac_match ? 100 : 
+                         (name_match || mac_match ? 85 : 70);
+    
+    // BLE advertisement type analysis
+    doc["advertisement_type"] = "BLE_ADVERTISEMENT";
+    doc["advertisement_description"] = "Bluetooth Low Energy device advertisement";
+    
+    // Detection method details
+    if (strcmp(detection_method, "mac_prefix") == 0) {
+        doc["primary_indicator"] = "MAC_ADDRESS";
+        doc["detection_reason"] = "MAC address matches known Flock Safety prefix";
+    } else if (strcmp(detection_method, "device_name") == 0) {
+        doc["primary_indicator"] = "DEVICE_NAME";
+        doc["detection_reason"] = "Device name matches Flock Safety pattern";
     }
     
     String json_output;
@@ -301,8 +410,13 @@ void wifi_sniffer_packet_handler(void* buff, wifi_promiscuous_pkt_type_t type)
         const char* detection_type = (frame_type == 0x20) ? "probe_request" : "beacon";
         output_wifi_detection_json(ssid, hdr->addr2, ppkt->rx_ctrl.rssi, detection_type);
         
-        triggered = true;
-        flock_detected_beep_sequence();
+        if (!triggered) {
+            triggered = true;
+            flock_detected_beep_sequence();
+        } else {
+            // Update detection time for heartbeat tracking
+            last_detection_time = millis();
+        }
         return;
     }
     
@@ -311,8 +425,13 @@ void wifi_sniffer_packet_handler(void* buff, wifi_promiscuous_pkt_type_t type)
         const char* detection_type = (frame_type == 0x20) ? "probe_request_mac" : "beacon_mac";
         output_wifi_detection_json(ssid[0] ? ssid : "hidden", hdr->addr2, ppkt->rx_ctrl.rssi, detection_type);
         
-        triggered = true;
-        flock_detected_beep_sequence();
+        if (!triggered) {
+            triggered = true;
+            flock_detected_beep_sequence();
+        } else {
+            // Update detection time for heartbeat tracking
+            last_detection_time = millis();
+        }
         return;
     }
 }
@@ -340,16 +459,26 @@ class AdvertisedDeviceCallbacks: public NimBLEAdvertisedDeviceCallbacks {
         // Check MAC prefix
         if (check_mac_prefix(mac)) {
             output_ble_detection_json(addrStr.c_str(), name.c_str(), rssi, "mac_prefix");
-            triggered = true;
-            flock_detected_beep_sequence();
+            if (!triggered) {
+                triggered = true;
+                flock_detected_beep_sequence();
+            } else {
+                // Update detection time for heartbeat tracking
+                last_detection_time = millis();
+            }
             return;
         }
         
         // Check device name
         if (!name.empty() && check_device_name_pattern(name.c_str())) {
             output_ble_detection_json(addrStr.c_str(), name.c_str(), rssi, "device_name");
-            triggered = true;
-            flock_detected_beep_sequence();
+            if (!triggered) {
+                triggered = true;
+                flock_detected_beep_sequence();
+            } else {
+                // Update detection time for heartbeat tracking
+                last_detection_time = millis();
+            }
             return;
         }
     }
@@ -423,11 +552,27 @@ void loop()
     // Handle channel hopping for WiFi promiscuous mode
     hop_channel();
     
-    // Run BLE scan
-    if (!triggered) {
-        pBLEScan->start(1, false); // Scan for 1 second, don't clear results
-        pBLEScan->clearResults();
+    // Handle heartbeat pulse if device is in range
+    if (device_in_range) {
+        unsigned long now = millis();
+        
+        // Check if 10 seconds have passed since last heartbeat
+        if (now - last_heartbeat >= 10000) {
+            heartbeat_pulse();
+            last_heartbeat = now;
+        }
+        
+        // Check if device has gone out of range (no detection for 30 seconds)
+        if (now - last_detection_time >= 30000) {
+            printf("Device out of range - stopping heartbeat\n");
+            device_in_range = false;
+            triggered = false; // Allow new detections
+        }
     }
+    
+    // Run BLE scan
+    pBLEScan->start(1, false); // Scan for 1 second, don't clear results
+    pBLEScan->clearResults();
     
     delay(100);
 }
