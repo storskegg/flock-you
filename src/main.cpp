@@ -154,6 +154,8 @@ void heartbeat_pulse()
 {
     printf("Heartbeat: Device still in range\n");
     beep(HEARTBEAT_FREQ, HEARTBEAT_DURATION);
+    delay(100);
+    beep(HEARTBEAT_FREQ, HEARTBEAT_DURATION);
 }
 
 // ============================================================================

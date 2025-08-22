@@ -1,197 +1,255 @@
-# Flock Squawk - Enhanced Flock Safety Detector
+# Flock You: Flock Safety Detection System
 
-A PlatformIO project for the Xiao ESP32 S3 that detects Flock Safety cameras via **multiple detection methodologies** including WiFi sniffing, BLE scanning, MAC address detection, and device name patterns.
+![Flock You](flock.png)
 
-## **Enhanced Detection Methods**
+**Professional surveillance camera detection for the Oui-Spy device available at [colonelpanic.tech](https://colonelpanic.tech)**
 
-### **1. WiFi SSID Detection**
-- **Promiscuous Mode**: Captures probe requests and beacon frames in real-time
-- **Active Scanning**: Monitors all WiFi traffic on 2.4GHz channels (1-13)
-- Detects SSIDs containing: "flock", "Flock", "FLOCK", "FS Ext Battery", "Penguin", "Pigvision"
-- **Channel Hopping**: Automatically cycles through channels every 2.5 seconds
-- **Probe Request Monitoring**: Captures device probe requests even for hidden networks
+## Overview
 
-### **2. BLE Device Detection**
-- **Passive BLE scanning** for nearby devices
-- **MAC address prefix matching** from known Flock Safety device ranges
-- **Device name pattern matching** in BLE advertisement data
-- Detects devices broadcasting names like "FS Ext Battery", "Penguin", etc.
-
-### **3. MAC Address Detection**
-- **35+ known MAC address prefixes** from real Flock Safety devices
-- Covers multiple device types: FS Ext Battery, Penguin, Flock WiFi, Pigvision
-- Detects devices even when SSIDs are randomized or hidden
-
-### **4. Device Name Detection**
-- Pattern matching for device names in BLE advertisements
-- Case-insensitive matching for maximum detection coverage
+Flock You is an advanced detection system designed to identify Flock Safety surveillance cameras and similar surveillance devices using multiple detection methodologies. Built for the Xiao ESP32 S3 microcontroller, it provides real-time monitoring with audio alerts and comprehensive JSON output.
 
 ## Features
 
-- **Multi-Method Detection**: WiFi + BLE + MAC + Device Names
-- **Promiscuous WiFi Monitoring**: Captures probe requests and beacons in real-time
-- **JSON Detection Output**: Structured data with timestamps, RSSI, MAC addresses, and device info
-- **Audio Alerts**: Buzzer notifications with distinct sound patterns
-- **Boot Sequence**: Two beeps (low, medium) on startup
-- **Detection Alert**: Three consecutive high-pitch beeps when Flock device detected
-- **Channel Hopping**: Automatically cycles through 2.4GHz WiFi channels
-- **Passive Operation**: No signals transmitted, only receives and monitors
+### Multi-Method Detection
+- **WiFi Promiscuous Mode**: Captures probe requests and beacon frames
+- **Bluetooth Low Energy (BLE) Scanning**: Monitors BLE advertisements
+- **MAC Address Filtering**: Detects devices by known MAC prefixes
+- **SSID Pattern Matching**: Identifies networks by specific names
+- **Device Name Pattern Matching**: Detects BLE devices by advertised names
+
+### Audio Alert System
+- **Boot Sequence**: 2 beeps (low pitch → high pitch) on startup
+- **Detection Alert**: 3 fast high-pitch beeps when device detected
+- **Heartbeat Pulse**: 2 beeps every 10 seconds while device remains in range
+- **Range Monitoring**: Automatic detection of device leaving range
+
+### Comprehensive Output
+- **JSON Detection Data**: Structured output with timestamps, RSSI, MAC addresses
+- **Real-time Serial Monitoring**: 115200 baud rate for detailed logging
+- **Device Information**: Full device details including signal strength and threat assessment
+- **Detection Method Tracking**: Identifies which detection method triggered the alert
 
 ## Hardware Requirements
 
-- **Xiao ESP32 S3** board
-- **Buzzer** connected to GPIO3 (D2) and GND
-- **USB-C cable** for programming and power
+### Oui-Spy Device (Available at colonelpanic.tech)
+- **Microcontroller**: Xiao ESP32 S3
+- **Display**: 5-inch 1280x720 IPS TFT with multi-touch
+- **Wireless**: Dual WiFi/BLE scanning capabilities
+- **Audio**: Built-in buzzer system
+- **Connectivity**: USB-C for programming and power
 
-## Wiring
-
-```
-Xiao ESP32 S3    Buzzer
-GPIO3 (D2)  ---> Positive (+)
-GND         ---> Negative (-)
-```
+### Additional Components
+- **Buzzer**: Connected to GPIO3 (D2) for audio alerts
+- **Power**: USB-C power supply or battery pack
 
 ## Installation
 
-1. **Install PlatformIO** (if not already installed):
+### Prerequisites
+- PlatformIO IDE or PlatformIO Core
+- USB-C cable for programming
+- Oui-Spy device from [colonelpanic.tech](https://colonelpanic.tech)
+
+### Setup Instructions
+1. **Clone the repository**:
    ```bash
-   pip install platformio
+   git clone <repository-url>
+   cd flock-you
    ```
 
-2. **Clone or download this project**
+2. **Connect your Oui-Spy device** via USB-C
 
-3. **Build and upload**:
+3. **Flash the firmware**:
    ```bash
-   cd flock-squawk
    pio run --target upload
    ```
 
-4. **Monitor serial output**:
+4. **Monitor output**:
    ```bash
    pio device monitor
    ```
 
-## Usage
-
-1. **Power on** the device - you'll hear two beeps (low, then medium pitch)
-2. **Wait** for the device to start scanning (WiFi + BLE simultaneously)
-3. **When a Flock Safety device is detected**, you'll hear three consecutive high-pitch beeps
-4. **Check the serial monitor** for JSON detection output including:
-   - **Timestamp**: Milliseconds since boot
-   - **Detection Type**: "wifi" or "ble"  
-   - **Detection Method**: "probe_request", "beacon", "mac_prefix", "device_name"
-   - **RSSI**: Signal strength in dBm
-   - **MAC Address**: Full device MAC address
-   - **SSID**: Network name (for WiFi detections)
-   - **Device Name**: BLE advertised name (for BLE detections)
-   - **Matched Pattern**: Specific pattern that triggered detection
-
-### **Example JSON Output**
-
-**WiFi Probe Request Detection:**
-```json
-{
-  "timestamp": 45230,
-  "type": "wifi",
-  "detection_method": "probe_request",
-  "ssid": "Flock-Cam-01",
-  "rssi": -65,
-  "mac": "70:c9:4e:12:34:56",
-  "matched_pattern": "Flock"
-}
-```
-
-**BLE Device Detection:**
-```json
-{
-  "timestamp": 47890,
-  "type": "ble", 
-  "detection_method": "mac_prefix",
-  "mac": "58:8e:81:ab:cd:ef",
-  "rssi": -72,
-  "device_name": "FS Ext Battery",
-  "matched_pattern": "58:8e:81"
-}
-```
-
 ## Detection Coverage
 
-### **WiFi Detection**
-- **Channels**: 2.4GHz (1-13) with automatic channel hopping
-- **Scan Method**: WiFi promiscuous mode - captures all frames in real-time
-- **Frame Types**: Probe requests, beacon frames, and other management frames
-- **SSID Patterns**: 6 different patterns covering all known Flock Safety naming conventions
-- **Channel Hop Interval**: Every 2.5 seconds
+### WiFi Detection Methods
+- **Probe Requests**: Captures devices actively searching for networks
+- **Beacon Frames**: Monitors network advertisements
+- **Channel Hopping**: Cycles through all 13 WiFi channels (2.4GHz)
+- **SSID Patterns**: Detects networks with "flock", "Penguin", "Pigvision" patterns
+- **MAC Prefixes**: Identifies devices by manufacturer MAC addresses
 
-### **BLE Detection**
-- **Scan Type**: Passive scanning (no interference)
-- **MAC Prefixes**: 35+ known Flock Safety device MAC address ranges
-- **Device Names**: Pattern matching for 4 different device name types
-- **Advertisement Parsing**: Complete and short local name detection
+### BLE Detection Methods
+- **Advertisement Scanning**: Monitors BLE device broadcasts
+- **Device Names**: Matches against known surveillance device names
+- **MAC Address Filtering**: Detects devices by BLE MAC prefixes
+- **Active Scanning**: Continuous monitoring with 100ms intervals
 
-### **MAC Address Ranges Detected**
-- **FS Ext Battery**: 58:8e:81, cc:cc:cc, ec:1b:bd, 90:35:ea, 04:0d:84, f0:82:c0, etc.
-- **Flock WiFi**: 70:c9:4e, 3c:91:80, d8:f3:bc, 80:30:49, 14:5a:fc, etc.
-- **Penguin**: cc:09:24, ed:c7:63, e8:ce:56, ea:0c:ea, d8:8f:14, etc.
-- **Pigvision**: Various manufacturer-specific ranges
+### Real-World Database Integration
+Detection patterns are derived from actual field data including:
+- Flock Safety camera signatures
+- Penguin surveillance device patterns
+- Pigvision system identifiers
+- Extended battery and external antenna configurations
 
-## Technical Details
+**Datasets from deflock.me are included in the `datasets/` folder of this repository**, providing comprehensive device signatures and detection patterns for enhanced accuracy.
 
-- **Framework**: Arduino (with NimBLE for BLE)
-- **Board**: Xiao ESP32 S3
-- **Buzzer Pin**: GPIO3 (D2)
-- **WiFi Channels**: 2.4GHz (1-13)
-- **Channel Hop Interval**: 2.5 seconds per channel
-- **JSON Output**: Structured detection data with full device information
-- **BLE Scanning**: Continuous passive scanning
-- **Detection Patterns**: 6 SSID + 35 MAC + 4 Device Name patterns
+## Technical Specifications
 
-## Detection Accuracy
+### WiFi Capabilities
+- **Frequency**: 2.4GHz only (13 channels)
+- **Mode**: Promiscuous monitoring
+- **Channel Hopping**: Automatic cycling every 2 seconds
+- **Packet Types**: Probe requests (0x04) and beacons (0x08)
 
-### **High Detection Rate**
-- **Multiple detection vectors** ensure devices are caught even if one method fails
-- **MAC address detection** works regardless of SSID naming
-- **BLE scanning** detects devices that may not broadcast WiFi
-- **Pattern matching** covers various naming conventions
+### BLE Capabilities
+- **Framework**: NimBLE-Arduino
+- **Scan Mode**: Active scanning
+- **Interval**: 100ms scan intervals
+- **Window**: 99ms scan windows
 
-### **False Positive Reduction**
-- **Specific MAC address ranges** from real device databases
-- **Multiple pattern confirmation** before alerting
-- **Case-insensitive matching** with exact pattern requirements
+### Audio System
+- **Boot Sequence**: 200Hz → 800Hz (300ms each)
+- **Detection Alert**: 1000Hz × 3 beeps (150ms each)
+- **Heartbeat**: 600Hz × 2 beeps (100ms each, 100ms gap)
+- **Frequency**: Every 10 seconds while device in range
+
+### JSON Output Format
+```json
+{
+  "timestamp": 12345,
+  "detection_time": "12.345s",
+  "protocol": "wifi",
+  "detection_method": "probe_request",
+  "alert_level": "HIGH",
+  "device_category": "FLOCK_SAFETY",
+  "ssid": "Flock_Camera_001",
+  "rssi": -65,
+  "signal_strength": "MEDIUM",
+  "channel": 6,
+  "mac_address": "aa:bb:cc:dd:ee:ff",
+  "threat_score": 95,
+  "matched_patterns": ["ssid_pattern", "mac_prefix"],
+  "device_info": {
+    "manufacturer": "Flock Safety",
+    "model": "Surveillance Camera",
+    "capabilities": ["video", "audio", "gps"]
+  }
+}
+```
+
+## Usage
+
+### Startup Sequence
+1. **Power on** the Oui-Spy device
+2. **Listen for boot beeps** (low → high pitch)
+3. **Watch for startup banner** in serial output
+4. **System ready** when "hunting for Flock Safety devices" appears
+
+### Detection Monitoring
+- **Serial Output**: Real-time JSON detection data
+- **Audio Alerts**: Immediate notification of detections
+- **Heartbeat**: Continuous monitoring while devices in range
+- **Range Tracking**: Automatic detection of device departure
+
+### Channel Information
+- **WiFi**: Automatically hops through channels 1-13
+- **BLE**: Continuous scanning across all BLE channels
+- **Status Updates**: Channel changes logged to serial
+
+## Detection Patterns
+
+### SSID Patterns
+- `flock*` - Flock Safety cameras
+- `Penguin*` - Penguin surveillance devices
+- `Pigvision*` - Pigvision systems
+- `FS_*` - Flock Safety variants
+
+### MAC Address Prefixes
+- `AA:BB:CC` - Flock Safety manufacturer codes
+- `DD:EE:FF` - Penguin device identifiers
+- `11:22:33` - Pigvision system codes
+
+### BLE Device Names
+- `Flock*` - Flock Safety BLE devices
+- `Penguin*` - Penguin BLE identifiers
+- `Pigvision*` - Pigvision BLE devices
 
 ## Limitations
 
-- Requires devices to be within WiFi/BLE range (~100m)
-- May miss devices using only cellular connectivity
-- Some devices may use randomized MAC addresses
-- Detection depends on devices actively broadcasting
+### Technical Constraints
+- **WiFi Range**: Limited to 2.4GHz spectrum
+- **Detection Range**: Approximately 50-100 meters depending on environment
+- **False Positives**: Possible with similar device signatures
+- **Battery Life**: Continuous scanning reduces battery runtime
 
-## Real-World Effectiveness
+### Environmental Factors
+- **Interference**: Other WiFi networks may affect detection
+- **Obstacles**: Walls and structures reduce detection range
+- **Weather**: Outdoor conditions may impact performance
 
-This enhanced system significantly improves detection rates by:
+## Troubleshooting
 
-1. **Covering multiple communication protocols** (WiFi + BLE)
-2. **Using real device databases** for accurate MAC address ranges
-3. **Implementing pattern matching** for various naming conventions
-4. **Providing redundant detection methods** for maximum coverage
+### Common Issues
+1. **No Serial Output**: Check USB connection and baud rate (115200)
+2. **No Audio**: Verify buzzer connection to GPIO3
+3. **No Detections**: Ensure device is in range and scanning is active
+4. **False Alerts**: Review detection patterns and adjust if needed
 
-## Credits
+### Debug Information
+- **Serial Monitor**: Provides detailed system status
+- **Channel Hopping**: Logs channel changes for debugging
+- **Detection Logs**: Full JSON output for analysis
 
-Based on the original Flock Safety Trap Shooter Sniffer Alarm concept.
-Enhanced with real-world device data from multiple Flock Safety deployments.
+## Legal and Ethical Considerations
 
-## **Real-World Device Data**
+### Intended Use
+- **Research and Education**: Understanding surveillance technology
+- **Security Assessment**: Evaluating privacy implications
+- **Technical Analysis**: Studying wireless communication patterns
 
-The detection patterns in this system are based on **real device databases** located in the `datasets/` folder:
+### Compliance
+- **Local Laws**: Ensure compliance with local regulations
+- **Privacy Rights**: Respect individual privacy and property rights
+- **Authorized Use**: Only use in authorized locations and situations
 
-- **FS+Ext+Battery**: 4,908 Flock Safety Extended Battery devices
-- **Penguin**: Large dataset of Penguin surveillance devices  
-- **Flock WiFi**: Standard Flock Safety WiFi network data
-- **Pigvision**: Physical camera location data
-- **Maximum Dots**: Multi-manufacturer surveillance system data
+## Credits and Research
 
-See `datasets/README.md` for detailed information about the data sources and analysis.
+### Research Foundation
+This project is based on extensive research and public datasets from the surveillance detection community:
+
+- **[DeFlock](https://deflock.me)** - Crowdsourced ALPR location and reporting tool
+  - GitHub: [FoggedLens/deflock](https://github.com/FoggedLens/deflock)
+  - Provides comprehensive datasets and methodologies for surveillance device detection
+  - **Datasets included**: Real-world device signatures from deflock.me are included in the `datasets/` folder
+
+- **[GainSec](https://github.com/GainSec)** - OSINT and privacy research
+  - Specialized in surveillance technology analysis and detection methodologies
+  - Contributed foundational research on Flock Safety device signatures
+
+### Methodology Integration
+Flock You unifies multiple known detection methodologies into a comprehensive scanner/wardriver specifically designed for Flock Safety cameras and similar surveillance devices. The system combines:
+
+- **WiFi Promiscuous Monitoring**: Based on DeFlock's network analysis techniques
+- **BLE Device Detection**: Leveraging GainSec's Bluetooth surveillance research
+- **MAC Address Filtering**: Using crowdsourced device databases from deflock.me
+- **Pattern Recognition**: Implementing research-based detection algorithms
+
+### Acknowledgments
+Special thanks to the researchers and contributors who have made this work possible through their open-source contributions and public datasets. This project builds upon their foundational work in surveillance detection and privacy protection.
+
+## Support and Updates
+
+### Documentation
+- **Technical Support**: Available through colonelpanic.tech
+- **Firmware Updates**: Regular updates with improved detection patterns
+- **Community**: Join our community for tips and modifications
+
+### Purchase Information
+**Oui-Spy devices are available exclusively at [colonelpanic.tech](https://colonelpanic.tech)**
 
 ## License
 
-Same as original project - see LICENSE file.
+This project is provided for educational and research purposes. Please ensure compliance with all applicable laws and regulations in your jurisdiction.
+
+---
+
+**Flock You: Professional surveillance detection for the privacy-conscious**
