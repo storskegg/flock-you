@@ -4,14 +4,16 @@ import csv
 import os
 from datetime import datetime
 import time
-from flask_socketio import SocketIO, emit
+from flask_socketio import SocketIO, emit, join_room, leave_room
 import threading
 import serial
 import serial.tools.list_ports
+import queue
+import uuid
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'flockyou_secret_key_2024'
-socketio = SocketIO(app, cors_allowed_origins="*")
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'flockyou_dev_key_2024')
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading', logger=True, engineio_logger=True)
 
 # Global variables
 detections = []
@@ -22,11 +24,13 @@ flock_device_connected = False
 flock_device_port = None
 flock_serial_connection = None
 oui_database = {}
-serial_terminal_socket = None
 serial_data_buffer = []
 reconnect_attempts = {'flock': 0, 'gps': 0}
 max_reconnect_attempts = 5
 reconnect_delay = 3  # seconds
+connection_lock = threading.Lock()
+serial_queue = queue.Queue()
+next_detection_id = 1  # Unique ID counter
 
 # Load OUI database
 def load_oui_database():
@@ -115,6 +119,16 @@ def parse_nmea_sentence(sentence):
     
     return None
 
+def safe_socket_emit(event, data, room=None):
+    """Safely emit socket events with error handling"""
+    try:
+        if room:
+            socketio.emit(event, data, room=room)
+        else:
+            socketio.emit(event, data)
+    except Exception as e:
+        print(f"Socket emit error for {event}: {e}")
+
 def gps_reader():
     """Background thread for reading GPS data"""
     global gps_data, serial_connection, gps_enabled
@@ -127,11 +141,12 @@ def gps_reader():
                     parsed = parse_nmea_sentence(line)
                     if parsed:
                         gps_data = parsed
-                        socketio.emit('gps_update', parsed)
+                        safe_socket_emit('gps_update', parsed)
             except Exception as e:
                 print(f"GPS read error: {e}")
-                gps_enabled = False
-                socketio.emit('gps_disconnected')
+                with connection_lock:
+                    gps_enabled = False
+                safe_socket_emit('gps_disconnected', {})
                 break
         time.sleep(0.1)
 
@@ -151,9 +166,9 @@ def flock_reader():
                         if len(serial_data_buffer) > 1000:  # Keep last 1000 lines
                             serial_data_buffer.pop(0)
                         
-                        # Forward to serial terminal if active
-                        if serial_terminal_socket:
-                            socketio.emit('serial_data', line, room=serial_terminal_socket)
+                        # Forward to all serial terminal clients
+                        safe_socket_emit('serial_data', line, room='serial_terminal')
+                        print(f"Serial data sent to terminal: {line}")
                         
                         # Try to parse as detection data
                         try:
@@ -161,14 +176,17 @@ def flock_reader():
                             if 'detection_method' in data:
                                 # This is a detection, add it
                                 add_detection_from_serial(data)
+                            else:
+                                print(f"JSON data without detection_method: {data}")
                         except json.JSONDecodeError:
                             # Not JSON, just log it
-                            print(f"Flock device: {line}")
+                            print(f"Flock device (non-JSON): {line}")
                             
             except Exception as e:
                 print(f"Flock device read error: {e}")
-                flock_device_connected = False
-                socketio.emit('flock_disconnected')
+                with connection_lock:
+                    flock_device_connected = False
+                safe_socket_emit('flock_disconnected', {})
                 # Trigger reconnection immediately
                 attempt_reconnect_flock()
                 break
@@ -176,7 +194,7 @@ def flock_reader():
 
 def add_detection_from_serial(data):
     """Add detection from serial data"""
-    global detections, gps_data
+    global detections, gps_data, next_detection_id
     
     # Add GPS data if available
     if gps_data and gps_data.get('fix_quality') > 0:
@@ -185,7 +203,8 @@ def add_detection_from_serial(data):
             'longitude': gps_data.get('longitude'),
             'altitude': gps_data.get('altitude'),
             'timestamp': gps_data.get('timestamp'),
-            'satellites': gps_data.get('satellites')
+            'satellites': gps_data.get('satellites'),
+            'fix_quality': gps_data.get('fix_quality')
         }
     
     # Add manufacturer information
@@ -196,13 +215,15 @@ def add_detection_from_serial(data):
     data['server_timestamp'] = datetime.now().isoformat()
     
     # Add unique ID for aliasing
-    data['id'] = len(detections)
+    data['id'] = next_detection_id
+    next_detection_id += 1
     data['alias'] = ''  # Empty alias by default
     
     detections.append(data)
     
     # Emit to connected clients
-    socketio.emit('new_detection', data)
+    safe_socket_emit('new_detection', data)
+    print(f"New detection added: ID {data['id']}, Method: {data.get('detection_method')}, MAC: {data.get('mac_address')}")
 
 def connection_monitor():
     """Background thread for monitoring device connections"""
@@ -210,20 +231,33 @@ def connection_monitor():
     
     while True:
         # Check GPS connection
-        if gps_enabled and (not serial_connection or not serial_connection.is_open):
-            gps_enabled = False
-            socketio.emit('gps_disconnected')
-            print("GPS connection lost")
-            # Start reconnection attempts
-            attempt_reconnect_gps()
+        if gps_enabled:
+            try:
+                if not serial_connection or not serial_connection.is_open:
+                    with connection_lock:
+                        gps_enabled = False
+                    safe_socket_emit('gps_disconnected', {})
+                    print("GPS connection lost")
+                    # Start reconnection attempts
+                    attempt_reconnect_gps()
+                else:
+                    # Test if the connection is still valid
+                    serial_connection.in_waiting
+            except Exception as e:
+                print(f"GPS connection test failed: {e}")
+                with connection_lock:
+                    gps_enabled = False
+                safe_socket_emit('gps_disconnected', {})
+                attempt_reconnect_gps()
         
         # Check Flock You device connection
         if flock_device_connected:
             try:
                 # Test if the connection is still valid
                 if not flock_serial_connection or not flock_serial_connection.is_open:
-                    flock_device_connected = False
-                    socketio.emit('flock_disconnected')
+                    with connection_lock:
+                        flock_device_connected = False
+                    safe_socket_emit('flock_disconnected', {})
                     print("Flock You device connection lost")
                     # Start reconnection attempts
                     attempt_reconnect_flock()
@@ -232,8 +266,9 @@ def connection_monitor():
                     flock_serial_connection.in_waiting
             except Exception as e:
                 print(f"Flock device connection test failed: {e}")
-                flock_device_connected = False
-                socketio.emit('flock_disconnected')
+                with connection_lock:
+                    flock_device_connected = False
+                safe_socket_emit('flock_disconnected', {})
                 # Start reconnection attempts
                 attempt_reconnect_flock()
         
@@ -248,6 +283,8 @@ def attempt_reconnect_flock():
         
         while not flock_device_connected and reconnect_attempts['flock'] < max_reconnect_attempts:
             try:
+                print(f"Attempting to reconnect to Flock device (attempt {reconnect_attempts['flock'] + 1}/{max_reconnect_attempts})")
+                
                 # Try to reconnect
                 if flock_serial_connection:
                     try:
@@ -264,10 +301,11 @@ def attempt_reconnect_flock():
                 test_data = flock_serial_connection.readline()
                 
                 # If successful, update status
-                flock_device_connected = True
+                with connection_lock:
+                    flock_device_connected = True
                 reconnect_attempts['flock'] = 0
                 print(f"Successfully reconnected to Flock device on {flock_device_port}")
-                socketio.emit('flock_reconnected', {'port': flock_device_port})
+                safe_socket_emit('flock_reconnected', {'port': flock_device_port})
                 
                 # Restart the reading thread
                 flock_thread = threading.Thread(target=flock_reader, daemon=True)
@@ -275,12 +313,13 @@ def attempt_reconnect_flock():
                 return
                 
             except Exception as e:
+                print(f"Reconnection attempt failed: {e}")
                 reconnect_attempts['flock'] += 1
                 time.sleep(reconnect_delay)
         
         if reconnect_attempts['flock'] >= max_reconnect_attempts:
             print("Max reconnection attempts reached for Flock device")
-            socketio.emit('reconnect_failed', {'device': 'flock'})
+            safe_socket_emit('reconnect_failed', {'device': 'flock'})
             reconnect_attempts['flock'] = 0  # Reset for future attempts
     
     thread = threading.Thread(target=reconnect_thread, daemon=True)
@@ -295,24 +334,33 @@ def attempt_reconnect_gps():
         
         while not gps_enabled and reconnect_attempts['gps'] < max_reconnect_attempts:
             try:
+                print(f"Attempting to reconnect to GPS device (attempt {reconnect_attempts['gps'] + 1}/{max_reconnect_attempts})")
+                
                 # Try to reconnect
                 test_ser = serial.Serial(serial_connection.port, GPS_BAUDRATE, timeout=1)
                 test_ser.close()
                 
                 # If successful, update status
-                gps_enabled = True
+                with connection_lock:
+                    gps_enabled = True
                 reconnect_attempts['gps'] = 0
                 print(f"Successfully reconnected to GPS device on {serial_connection.port}")
-                socketio.emit('gps_reconnected', {'port': serial_connection.port})
+                safe_socket_emit('gps_reconnected', {'port': serial_connection.port})
+                
+                # Restart the reading thread
+                gps_thread = threading.Thread(target=gps_reader, daemon=True)
+                gps_thread.start()
                 return
                 
             except Exception as e:
+                print(f"GPS reconnection attempt failed: {e}")
                 reconnect_attempts['gps'] += 1
                 time.sleep(reconnect_delay)
         
         if reconnect_attempts['gps'] >= max_reconnect_attempts:
             print("Max reconnection attempts reached for GPS device")
-            socketio.emit('reconnect_failed', {'device': 'gps'})
+            safe_socket_emit('reconnect_failed', {'device': 'gps'})
+            reconnect_attempts['gps'] = 0  # Reset for future attempts
     
     thread = threading.Thread(target=reconnect_thread, daemon=True)
     thread.start()
@@ -376,7 +424,8 @@ def connect_gps():
             serial_connection.close()
         
         serial_connection = serial.Serial(port, GPS_BAUDRATE, timeout=GPS_TIMEOUT)
-        gps_enabled = True
+        with connection_lock:
+            gps_enabled = True
         
         # Start GPS reading thread
         gps_thread = threading.Thread(target=gps_reader, daemon=True)
@@ -391,7 +440,8 @@ def disconnect_gps():
     """Disconnect GPS dongle"""
     global serial_connection, gps_enabled
     
-    gps_enabled = False
+    with connection_lock:
+        gps_enabled = False
     if serial_connection:
         serial_connection.close()
         serial_connection = None
@@ -409,7 +459,8 @@ def connect_flock():
     try:
         # Create persistent connection to the port
         flock_serial_connection = serial.Serial(port, 115200, timeout=1)
-        flock_device_connected = True
+        with connection_lock:
+            flock_device_connected = True
         flock_device_port = port
         
         # Start reading thread
@@ -425,7 +476,8 @@ def disconnect_flock():
     """Disconnect Flock You device"""
     global flock_device_connected, flock_device_port, flock_serial_connection
     
-    flock_device_connected = False
+    with connection_lock:
+        flock_device_connected = False
     flock_device_port = None
     
     if flock_serial_connection and flock_serial_connection.is_open:
@@ -576,10 +628,29 @@ def export_kml():
 @app.route('/api/clear', methods=['POST'])
 def clear_detections():
     """Clear all detections"""
-    global detections
+    global detections, next_detection_id
     detections.clear()
-    socketio.emit('detections_cleared')
+    next_detection_id = 1  # Reset ID counter
+    safe_socket_emit('detections_cleared', {})
     return jsonify({'status': 'success', 'message': 'All detections cleared'})
+
+@app.route('/api/test/detection', methods=['POST'])
+def test_detection():
+    """Test endpoint to add a sample detection"""
+    sample_detection = {
+        'detection_method': 'probe_request',
+        'protocol': 'wifi',
+        'mac_address': 'AA:BB:CC:DD:EE:FF',
+        'ssid': 'TestNetwork',
+        'rssi': -45,
+        'signal_strength': 'Excellent',
+        'channel': 6,
+        'detection_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'timestamp': datetime.now().isoformat()
+    }
+    
+    add_detection_from_serial(sample_detection)
+    return jsonify({'status': 'success', 'message': 'Test detection added'})
 
 @app.route('/api/detection/alias', methods=['POST'])
 def update_detection_alias():
@@ -598,7 +669,7 @@ def update_detection_alias():
         if detection.get('id') == detection_id:
             detection['alias'] = alias
             # Emit update to all clients
-            socketio.emit('detection_updated', detection)
+            safe_socket_emit('detection_updated', detection)
             return jsonify({'status': 'success', 'message': 'Alias updated'})
     
     return jsonify({'status': 'error', 'message': 'Detection not found'}), 404
@@ -736,12 +807,37 @@ def handle_connect():
 @socketio.on('disconnect')
 def handle_disconnect():
     print(f"Client disconnected: {request.sid}")
+    # Clean up any room memberships
+    try:
+        leave_room('serial_terminal')
+    except:
+        pass
+
+@socketio.on('heartbeat')
+def handle_heartbeat():
+    """Handle client heartbeat to keep connection alive"""
+    try:
+        emit('heartbeat_ack')
+    except Exception as e:
+        print(f"Heartbeat response error: {e}")
+
+def send_heartbeat():
+    """Send periodic heartbeat to all clients"""
+    while True:
+        try:
+            safe_socket_emit('heartbeat', {})
+            time.sleep(30)  # Send heartbeat every 30 seconds
+        except Exception as e:
+            print(f"Heartbeat error: {e}")
+            time.sleep(5)
 
 @socketio.on('request_serial_terminal')
 def handle_serial_terminal_request(data):
     """Handle serial terminal connection request"""
-    global serial_terminal_socket, serial_data_buffer
+    global serial_data_buffer
     port = data.get('port')
+    
+    print(f"Serial terminal request from {request.sid} for port: {port}")
     
     if not port:
         emit('serial_error', {'message': 'No port specified'})
@@ -752,14 +848,20 @@ def handle_serial_terminal_request(data):
         return
     
     try:
-        serial_terminal_socket = request.sid
+        # Add to serial terminal room
+        join_room('serial_terminal')
         emit('serial_connected')
         
         # Send recent buffer data
+        buffer_count = len(serial_data_buffer)
+        print(f"Sending {min(50, buffer_count)} recent lines to terminal")
         for line in serial_data_buffer[-50:]:  # Send last 50 lines
-            socketio.emit('serial_data', line, room=serial_terminal_socket)
+            emit('serial_data', line)
+        
+        print(f"Serial terminal connected for client {request.sid}")
         
     except Exception as e:
+        print(f"Serial terminal connection error: {e}")
         emit('serial_error', {'message': f'Failed to start terminal: {str(e)}'})
 
 if __name__ == '__main__':
@@ -770,4 +872,21 @@ if __name__ == '__main__':
     monitor_thread = threading.Thread(target=connection_monitor, daemon=True)
     monitor_thread.start()
     
-    socketio.run(app, debug=True, host='0.0.0.0', port=5001)
+    # Start heartbeat thread
+    heartbeat_thread = threading.Thread(target=send_heartbeat, daemon=True)
+    heartbeat_thread.start()
+    
+    print("Starting Flock You API server...")
+    print("Server will be available at: http://localhost:5000")
+    print("Press Ctrl+C to stop the server")
+    
+    try:
+        socketio.run(app, debug=False, host='0.0.0.0', port=5000, allow_unsafe_werkzeug=True)
+    except KeyboardInterrupt:
+        print("\nShutting down server...")
+        # Clean up connections
+        if flock_serial_connection and flock_serial_connection.is_open:
+            flock_serial_connection.close()
+        if serial_connection and serial_connection.is_open:
+            serial_connection.close()
+        print("Server stopped.")
