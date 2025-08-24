@@ -193,7 +193,7 @@ def flock_reader():
         time.sleep(0.1)
 
 def add_detection_from_serial(data):
-    """Add detection from serial data"""
+    """Add detection from serial data - counts detections per MAC address"""
     global detections, gps_data, next_detection_id
     
     # Add GPS data if available
@@ -214,16 +214,51 @@ def add_detection_from_serial(data):
     # Add server timestamp
     data['server_timestamp'] = datetime.now().isoformat()
     
-    # Add unique ID for aliasing
-    data['id'] = next_detection_id
-    next_detection_id += 1
-    data['alias'] = ''  # Empty alias by default
+    # Check if we already have a detection for this MAC address
+    mac_address = data.get('mac_address')
+    existing_detection = None
     
-    detections.append(data)
+    if mac_address:
+        for detection in detections:
+            if detection.get('mac_address') == mac_address:
+                existing_detection = detection
+                break
     
-    # Emit to connected clients
-    safe_socket_emit('new_detection', data)
-    print(f"New detection added: ID {data['id']}, Method: {data.get('detection_method')}, MAC: {data.get('mac_address')}")
+    if existing_detection:
+        # Update existing detection with new data and increment count
+        existing_detection['detection_count'] = existing_detection.get('detection_count', 1) + 1
+        existing_detection['last_seen'] = datetime.now().isoformat()
+        existing_detection['last_rssi'] = data.get('rssi', existing_detection.get('last_rssi'))
+        existing_detection['last_channel'] = data.get('channel', existing_detection.get('last_channel'))
+        existing_detection['last_frequency'] = data.get('frequency', existing_detection.get('last_frequency'))
+        existing_detection['last_ssid'] = data.get('ssid', existing_detection.get('last_ssid'))
+        existing_detection['last_device_name'] = data.get('device_name', existing_detection.get('last_device_name'))
+        
+        # Preserve detection_method if not already set
+        if not existing_detection.get('detection_method') and data.get('detection_method'):
+            existing_detection['detection_method'] = data.get('detection_method')
+        
+        # Update GPS if new data is available
+        if data.get('gps'):
+            existing_detection['gps'] = data['gps']
+        
+        # Emit updated detection
+        safe_socket_emit('detection_updated', existing_detection)
+        print(f"Updated detection: MAC {mac_address}, Count: {existing_detection['detection_count']}, Method: {existing_detection.get('detection_method')}")
+    else:
+        # Create new detection
+        data['id'] = next_detection_id
+        next_detection_id += 1
+        data['alias'] = ''  # Empty alias by default
+        data['detection_count'] = 1
+        data['first_seen'] = datetime.now().isoformat()
+        data['last_seen'] = datetime.now().isoformat()
+        
+        detections.append(data)
+        
+        # Emit to connected clients
+        safe_socket_emit('new_detection', data)
+        print(f"New detection added: ID {data['id']}, Method: {data.get('detection_method')}, MAC: {mac_address}")
 
 def connection_monitor():
     """Background thread for monitoring device connections"""
@@ -637,17 +672,33 @@ def clear_detections():
 @app.route('/api/test/detection', methods=['POST'])
 def test_detection():
     """Test endpoint to add a sample detection"""
-    sample_detection = {
-        'detection_method': 'probe_request',
-        'protocol': 'wifi',
-        'mac_address': 'AA:BB:CC:DD:EE:FF',
-        'ssid': 'TestNetwork',
-        'rssi': -45,
-        'signal_strength': 'Excellent',
-        'channel': 6,
-        'detection_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-        'timestamp': datetime.now().isoformat()
-    }
+    if request.is_json:
+        # Use provided detection data
+        sample_detection = request.json
+        # Ensure required fields are present
+        if 'detection_method' not in sample_detection:
+            sample_detection['detection_method'] = 'probe_request'
+        if 'protocol' not in sample_detection:
+            sample_detection['protocol'] = 'wifi'
+        if 'mac_address' not in sample_detection:
+            sample_detection['mac_address'] = 'AA:BB:CC:DD:EE:FF'
+        if 'detection_time' not in sample_detection:
+            sample_detection['detection_time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        if 'timestamp' not in sample_detection:
+            sample_detection['timestamp'] = datetime.now().isoformat()
+    else:
+        # Use default sample detection
+        sample_detection = {
+            'detection_method': 'probe_request',
+            'protocol': 'wifi',
+            'mac_address': 'AA:BB:CC:DD:EE:FF',
+            'ssid': 'TestNetwork',
+            'rssi': -45,
+            'signal_strength': 'Excellent',
+            'channel': 6,
+            'detection_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'timestamp': datetime.now().isoformat()
+        }
     
     add_detection_from_serial(sample_detection)
     return jsonify({'status': 'success', 'message': 'Test detection added'})

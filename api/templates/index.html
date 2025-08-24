@@ -518,15 +518,21 @@
 
         .alias-display {
             cursor: pointer;
-            padding: 2px 6px;
+            padding: 0.25rem 0.5rem;
             border-radius: 4px;
-            transition: background-color 0.2s ease;
             display: inline-block;
             min-width: 100px;
+            background: #1e40af;
+            border: 1px solid #3b82f6;
+            color: #93c5fd;
+            font-weight: 600;
+            font-size: 0.85rem;
         }
 
         .alias-display:hover {
-            background-color: rgba(139, 92, 246, 0.2);
+            background: #2563eb;
+            border-color: #60a5fa;
+            color: white;
         }
 
         .alias-display em {
@@ -662,89 +668,124 @@
         }
 
         .detection-item {
-            padding: 0.75rem;
-            border-bottom: 1px solid #4c1d95;
-            transition: background-color 0.3s ease;
-            background: rgba(45, 27, 105, 0.4);
+            background: #1e3a8a;
+            border: 1px solid #3b82f6;
+            border-radius: 6px;
+            padding: 0.5rem;
+            margin-bottom: 0.5rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            min-height: 5rem;
         }
 
         .detection-item:hover {
-            background: rgba(74, 27, 105, 0.6);
-        }
-
-        .detection-item:last-child {
-            border-bottom: none;
+            background: #1e40af;
+            border-color: #60a5fa;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
         }
 
         .detection-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 0.3rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .detection-header-left {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .gps-link {
+            color: #93c5fd;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-decoration: none;
+            padding: 0.1rem 0.3rem;
+            border-radius: 3px;
+            background: rgba(147, 197, 253, 0.1);
+            border: 1px solid #3b82f6;
+            transition: all 0.2s ease;
+        }
+
+        .gps-link:hover {
+            background: #3b82f6;
+            color: white;
+            text-decoration: none;
+        }
+
+        .detection-type-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
         .detection-type {
-            background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%);
+            background: #2563eb;
             color: white;
-            padding: 0.2rem 0.6rem;
-            border-radius: 12px;
-            font-size: 0.75rem;
-            font-weight: 600;
+            padding: 0.25rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .detection-count {
+            background: #059669;
+            color: white;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            min-width: 2.5rem;
+            text-align: center;
         }
 
         .detection-time {
-            color: #d1d5db;
-            font-size: 0.8rem;
+            color: #93c5fd;
+            font-size: 0.9rem;
+            font-weight: 600;
         }
 
         .detection-details {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-            gap: 0.25rem;
-            font-size: 0.8rem;
-            margin-top: 0.4rem;
-        }
-
-        .detection-details.compact {
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-            gap: 0.2rem;
-            font-size: 0.75rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            align-items: center;
         }
 
         .detail-item {
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            padding: 0.2rem 0;
+            white-space: nowrap;
         }
 
         .detail-label {
-            font-weight: 600;
-            color: #c084fc;
-            min-width: 80px;
-            font-size: 0.8rem;
+            font-weight: 700;
+            color: #93c5fd;
+            font-size: 0.9rem;
+            margin-right: 0.5rem;
         }
 
         .detail-value {
-            color: #e0e0e0;
-            text-align: right;
-            word-break: break-all;
-            max-width: 60%;
-        }
-
-        .gps-info {
-            background: rgba(16, 185, 129, 0.2);
-            border: 1px solid #10b981;
-            border-radius: 6px;
-            padding: 0.4rem;
-            margin-top: 0.4rem;
-        }
-
-        .gps-info h4 {
-            color: #34d399;
-            margin-bottom: 0.2rem;
+            color: #ffffff;
+            font-weight: 600;
             font-size: 0.9rem;
         }
+
+        .detection-timing {
+            grid-column: 1 / -1;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            border-radius: 4px;
+            padding: 0.2rem;
+            margin-top: 0.15rem;
+            font-size: 0.65rem;
+        }
+
+
 
         .no-detections {
             text-align: center;
@@ -915,8 +956,6 @@
                     </div>
                     <button class="export-btn" onclick="exportCSV()">Export CSV</button>
                     <button class="export-btn" onclick="exportKML()">Export KML</button>
-                    <button class="export-btn" onclick="toggleCompactView()" id="compactViewBtn">Compact View</button>
-                    <button class="export-btn" onclick="testDetection()" style="background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);">Test Detection</button>
                     <button class="clear-btn" onclick="clearDetections()">Clear All</button>
                 </div>
             </div>
@@ -1260,7 +1299,7 @@
         function updateStats() {
             const total = detections.length;
             const wifi = detections.filter(d => d.protocol === 'wifi').length;
-            const ble = detections.filter(d => d.protocol === 'ble').length;
+            const ble = detections.filter(d => d.protocol === 'bluetooth_le' || d.protocol === 'bluetooth_classic').length;
             const gps = detections.filter(d => d.gps).length;
 
             document.getElementById('totalDetections').textContent = total;
@@ -1281,91 +1320,58 @@
                 `;
                 return;
             }
-
-            const isCompact = container.classList.contains('compact-view');
             
             container.innerHTML = detectionsToRender.map(detection => {
-                // Build all available fields dynamically
-                const fields = [];
+                // Get detection count and timing info
+                const count = detection.detection_count || 1;
+                const lastSeen = detection.last_seen ? new Date(detection.last_seen).toLocaleTimeString() : 'Unknown';
                 
-                // Core fields (always show)
-                if (detection.protocol) fields.push(['Protocol', detection.protocol]);
-                if (detection.mac_address) fields.push(['MAC', detection.mac_address]);
-                if (detection.manufacturer) fields.push(['Manufacturer', detection.manufacturer]);
-                if (detection.rssi !== undefined) fields.push(['RSSI', `${detection.rssi} dBm`]);
+                // Use last known values for signal data
+                const rssi = detection.last_rssi !== undefined ? detection.last_rssi : detection.rssi;
+                const channel = detection.last_channel || detection.channel;
+                const ssid = detection.last_ssid || detection.ssid;
+                const deviceName = detection.last_device_name || detection.device_name;
                 
-                // Additional fields (show more in normal view)
-                if (!isCompact) {
-                    if (detection.signal_strength) fields.push(['Signal', detection.signal_strength]);
-                    if (detection.channel) fields.push(['Channel', detection.channel]);
-                    if (detection.frequency) fields.push(['Freq', detection.frequency]);
-                    if (detection.ssid) fields.push(['SSID', detection.ssid]);
-                    if (detection.device_name) fields.push(['Device', detection.device_name]);
-                    if (detection.service_uuid) fields.push(['Service', detection.service_uuid]);
-                    if (detection.tx_power) fields.push(['TX Power', detection.tx_power]);
-                    if (detection.company_identifier) fields.push(['Company ID', detection.company_identifier]);
-                    if (detection.advertisement_data) fields.push(['Adv Data', detection.advertisement_data]);
-                    if (detection.scan_response) fields.push(['Scan Resp', detection.scan_response]);
-                    if (detection.timestamp) fields.push(['Timestamp', detection.timestamp]);
-                    if (detection.server_timestamp) fields.push(['Server Time', new Date(detection.server_timestamp).toLocaleTimeString()]);
-                } else {
-                    // Compact view - show only essential fields
-                    if (detection.ssid) fields.push(['SSID', detection.ssid]);
-                    if (detection.device_name) fields.push(['Device', detection.device_name]);
-                    if (detection.channel) fields.push(['Ch', detection.channel]);
-                }
+                // Build essential fields in a compact layout
+                const essentialFields = [];
+                if (detection.protocol) essentialFields.push(['Protocol', detection.protocol]);
+                if (detection.mac_address) essentialFields.push(['MAC', detection.mac_address]);
+                if (rssi !== undefined) essentialFields.push(['RSSI', `${rssi} dBm`]);
+                if (channel) essentialFields.push(['Channel', channel]);
+                if (ssid) essentialFields.push(['SSID', ssid]);
+                if (deviceName) essentialFields.push(['Device', deviceName]);
+                if (detection.manufacturer) essentialFields.push(['Manufacturer', detection.manufacturer]);
                 
                 // Build the details HTML
-                const detailsHtml = fields.map(([label, value]) => `
+                const detailsHtml = essentialFields.map(([label, value]) => `
                     <div class="detail-item">
                         <span class="detail-label">${label}:</span>
                         <span class="detail-value">${value}</span>
                     </div>
                 `).join('');
 
-                // Build GPS info if available
-                let gpsHtml = '';
-                if (detection.gps && !isCompact) {
-                    const gpsFields = [];
-                    if (detection.gps.latitude !== undefined && detection.gps.longitude !== undefined) {
-                        gpsFields.push(['Coordinates', `${detection.gps.latitude.toFixed(6)}, ${detection.gps.longitude.toFixed(6)}`]);
-                    }
-                    if (detection.gps.altitude !== undefined) gpsFields.push(['Altitude', `${detection.gps.altitude}m`]);
-                    if (detection.gps.satellites !== undefined) gpsFields.push(['Satellites', detection.gps.satellites]);
-                    if (detection.gps.fix_quality !== undefined) gpsFields.push(['Fix Quality', detection.gps.fix_quality]);
-                    if (detection.gps.timestamp) gpsFields.push(['GPS Time', detection.gps.timestamp]);
-                    
-                    gpsHtml = `
-                        <div class="gps-info">
-                            <h4>📍 GPS Location</h4>
-                            ${gpsFields.map(([label, value]) => `
-                                <div class="detail-item">
-                                    <span class="detail-label">${label}:</span>
-                                    <span class="detail-value">${value}</span>
-                                </div>
-                            `).join('')}
-                        </div>
-                    `;
-                } else if (detection.gps && isCompact) {
-                    // Compact GPS display
-                    if (detection.gps.latitude !== undefined && detection.gps.longitude !== undefined) {
-                        gpsHtml = `
-                            <div class="gps-info">
-                                <h4>📍 ${detection.gps.latitude.toFixed(4)}, ${detection.gps.longitude.toFixed(4)}</h4>
-                            </div>
-                        `;
-                    }
+                // Build GPS link if available (header only)
+                let gpsLink = '';
+                if (detection.gps && detection.gps.latitude !== undefined && detection.gps.longitude !== undefined) {
+                    const lat = detection.gps.latitude;
+                    const lon = detection.gps.longitude;
+                    const osmUrl = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}&zoom=18`;
+                    gpsLink = `<a href="${osmUrl}" target="_blank" class="gps-link">${lat.toFixed(4)}, ${lon.toFixed(4)}</a>`;
                 }
-
-
 
                 return `
                     <div class="detection-item">
                         <div class="detection-header">
-                            <span class="detection-type">${detection.detection_method ? detection.detection_method.toUpperCase() : 'UNKNOWN'}</span>
-                            <span class="detection-time">${detection.detection_time || detection.timestamp || 'Unknown'}</span>
+                            <div class="detection-header-left">
+                                <div class="detection-type-badge">
+                                    <span class="detection-type">${detection.detection_method ? detection.detection_method.toUpperCase() : 'UNKNOWN'}</span>
+                                    <span class="detection-count">${count}×</span>
+                                </div>
+                                ${gpsLink}
+                            </div>
+                            <span class="detection-time">${lastSeen}</span>
                         </div>
-                        <div class="detection-details ${isCompact ? 'compact' : ''}">
+                        <div class="detection-details">
                             ${detailsHtml}
                             <div class="detail-item">
                                 <span class="detail-label">Alias:</span>
@@ -1374,7 +1380,6 @@
                                 </span>
                             </div>
                         </div>
-                        ${gpsHtml}
                     </div>
                 `;
             }).join('');
@@ -1404,40 +1409,7 @@
             }
         }
 
-        function toggleCompactView() {
-            const container = document.getElementById('detectionsList');
-            const button = document.getElementById('compactViewBtn');
-            const isCompact = container.classList.contains('compact-view');
-            
-            if (isCompact) {
-                container.classList.remove('compact-view');
-                button.textContent = 'Compact View';
-                button.style.background = 'linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%)';
-            } else {
-                container.classList.add('compact-view');
-                button.textContent = 'Normal View';
-                button.style.background = 'linear-gradient(135deg, #059669 0%, #10b981 100%)';
-            }
-            
-            renderDetections(); // Re-render with new view
-        }
 
-        function testDetection() {
-            console.log('Testing detection system...');
-            fetch('/api/test/detection', {
-                method: 'POST'
-            })
-            .then(response => response.json())
-            .then(data => {
-                console.log('Test detection response:', data);
-                if (data.status === 'success') {
-                    console.log('Test detection added successfully');
-                }
-            })
-            .catch(error => {
-                console.error('Test detection error:', error);
-            });
-        }
 
         // Socket connection events
         socket.on('connect', function() {
@@ -1488,6 +1460,24 @@
             
             updateStats();
             renderDetections();
+        });
+
+        socket.on('detection_updated', function(detection) {
+            console.log('Detection updated:', detection);
+            
+            // Validate detection data
+            if (!detection || !detection.id) {
+                console.error('Invalid detection update data received:', detection);
+                return;
+            }
+            
+            // Update existing detection
+            const existingIndex = detections.findIndex(d => d.id === detection.id);
+            if (existingIndex !== -1) {
+                detections[existingIndex] = detection;
+                updateStats();
+                renderDetections();
+            }
         });
 
         socket.on('gps_update', function(gpsData) {

@@ -4,3 +4,4 @@ python-socketio==5.8.0
 python-engineio==4.7.1
 pyserial==3.5
 Werkzeug==2.3.7
+requests==2.31.0
