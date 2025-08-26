@@ -34,11 +34,18 @@
             justify-content: space-between;
             align-items: center;
             width: 100%;
+            gap: 1rem;
         }
 
         .header-left {
             display: flex;
             align-items: center;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
         }
 
         .header h1 {
@@ -55,9 +62,8 @@
             text-shadow: 0 0 10px rgba(236, 72, 153, 0.5);
             letter-spacing: 2px;
             margin: 0;
-            position: absolute;
-            top: 1rem;
-            right: 2rem;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
 
         .controls {
@@ -71,7 +77,22 @@
             display: flex;
             align-items: center;
             gap: 0.5rem;
+            position: relative;
         }
+
+        .device-control-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .header-buttons {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+
 
         .control-group label {
             font-weight: 600;
@@ -850,24 +871,31 @@
             .header-content {
                 flex-direction: column;
                 gap: 1rem;
+                align-items: stretch;
             }
             
-            .header-left {
-                justify-content: center;
+            .flock-you-title {
+                font-size: 1.2rem;
+                text-align: center;
+                order: -1;
             }
             
             .controls {
                 flex-direction: column;
                 align-items: stretch;
                 gap: 1rem;
+                width: 100%;
             }
             
+            .device-control-group,
             .control-group {
+                width: 100%;
                 justify-content: space-between;
             }
             
-            .status {
+            .header-buttons {
                 justify-content: center;
+                width: 100%;
             }
             
             .detection-details {
@@ -879,10 +907,12 @@
 <body>
 
     <div class="header">
-        <h1 class="flock-you-title">FLOCK-YOU</h1>
         <div class="header-content">
+            <h1 class="flock-you-title">FLOCK-YOU</h1>
+            
             <div class="controls">
-                <div class="control-group">
+                <div class="device-control-group">
+                    <div class="status-indicator" id="flockStatus"></div>
                     <label>Sniffer:</label>
                     <select id="flockDeviceSelect">
                         <option value="">Select Port</option>
@@ -891,7 +921,8 @@
                     <button id="disconnectFlockBtn" class="danger" style="display: none;">Disconnect</button>
                 </div>
                 
-                <div class="control-group">
+                <div class="device-control-group">
+                    <div class="status-indicator" id="gpsStatus"></div>
                     <label>GPS:</label>
                     <select id="gpsPortSelect">
                         <option value="">Select Port</option>
@@ -910,19 +941,11 @@
                         <option value="device_name">BLE Device Name</option>
                     </select>
                 </div>
-                
-                <div class="status">
-                    <div class="status-group">
-                        <div class="status-indicator" id="flockStatus"></div>
-                        <span id="flockStatusText">Sniffer Disconnected</span>
-                    </div>
-                    <div class="status-group">
-                        <div class="status-indicator" id="gpsStatus"></div>
-                        <span id="gpsStatusText">GPS Disconnected</span>
-                    </div>
-                    <button id="serial-terminal-btn" class="serial-terminal-btn" onclick="toggleSerialTerminal()">Serial Terminal</button>
-                    <button id="oui-search-btn" class="oui-search-btn" onclick="toggleOuiSearch()">Search OUI</button>
-                </div>
+            </div>
+            
+            <div class="header-buttons">
+                <button id="serial-terminal-btn" class="serial-terminal-btn" onclick="toggleSerialTerminal()">Serial Terminal</button>
+                <button id="oui-search-btn" class="oui-search-btn" onclick="toggleOuiSearch()">Search OUI</button>
             </div>
         </div>
     </div>
@@ -1214,27 +1237,21 @@
 
         function updateFlockStatus(connected) {
             const indicator = document.getElementById('flockStatus');
-            const text = document.getElementById('flockStatusText');
             
             if (connected) {
                 indicator.classList.add('active');
-                text.textContent = 'Sniffer Connected';
             } else {
                 indicator.classList.remove('active');
-                text.textContent = 'Sniffer Disconnected';
             }
         }
 
         function updateGpsStatus(connected) {
             const indicator = document.getElementById('gpsStatus');
-            const text = document.getElementById('gpsStatusText');
             
             if (connected) {
                 indicator.classList.add('active');
-                text.textContent = 'GPS Connected';
             } else {
                 indicator.classList.remove('active');
-                text.textContent = 'GPS Disconnected';
             }
         }
 
