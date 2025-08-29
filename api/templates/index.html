@@ -24,28 +24,40 @@
         .header {
             background: rgba(26, 16, 51, 0.95);
             color: #e0e0e0;
-            padding: 1rem 2rem;
+            padding: 1rem;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
             border-bottom: 2px solid #8b5cf6;
         }
 
         .header-content {
-            display: flex;
-            justify-content: space-between;
+            display: grid;
+            grid-template-areas: 
+                "title controls buttons";
+            grid-template-columns: auto 1fr auto;
+            gap: 1rem;
             align-items: center;
             width: 100%;
-            gap: 1rem;
         }
 
-        .header-left {
-            display: flex;
-            align-items: center;
+        .header-title {
+            grid-area: title;
+            text-align: left;
         }
 
-        .header-right {
+        .header-controls {
+            grid-area: controls;
             display: flex;
-            align-items: center;
+            flex-wrap: wrap;
             gap: 1rem;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .header-buttons {
+            grid-area: buttons;
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
         }
 
         .header h1 {
@@ -66,9 +78,15 @@
             flex-shrink: 0;
         }
 
+        @media (max-width: 1200px) {
+            .flock-you-title {
+                font-size: 1.3rem;
+            }
+        }
+
         .controls {
             display: flex;
-            gap: 1rem;
+            gap: 0.75rem;
             align-items: center;
             flex-wrap: wrap;
         }
@@ -76,14 +94,16 @@
         .control-group {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 0.25rem;
             position: relative;
+            flex-shrink: 0;
         }
 
         .device-control-group {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 0.25rem;
+            flex-shrink: 0;
         }
 
         .port-controls {
@@ -117,10 +137,11 @@
             transform: translateY(0);
         }
 
-        .header-buttons {
+        .action-buttons {
             display: flex;
             align-items: center;
-            gap: 1rem;
+            gap: 0.5rem;
+            flex-shrink: 0;
         }
 
 
@@ -128,8 +149,9 @@
         .control-group label {
             font-weight: 600;
             color: #e0e0e0;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             white-space: nowrap;
+            min-width: fit-content;
         }
 
         select, button {
@@ -145,8 +167,9 @@
             background: #2d1b69;
             color: #e0e0e0;
             border: 1px solid #8b5cf6;
-            min-width: 120px;
-            max-width: 150px;
+            min-width: 100px;
+            max-width: 140px;
+            font-size: 0.75rem;
         }
 
         select:focus {
@@ -193,9 +216,8 @@
             color: white;
             font-weight: 600;
             border: 1px solid #047857;
-            padding: 0.4rem 0.8rem;
-            font-size: 0.8rem;
-            margin-left: 1rem;
+            padding: 0.3rem 0.6rem;
+            font-size: 0.75rem;
         }
 
         .serial-terminal-btn:hover {
@@ -209,15 +231,29 @@
             color: white;
             font-weight: 600;
             border: 1px solid #6d28d9;
-            padding: 0.4rem 0.8rem;
-            font-size: 0.8rem;
-            margin-left: 0.5rem;
+            padding: 0.3rem 0.6rem;
+            font-size: 0.75rem;
         }
 
         .oui-search-btn:hover {
             background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%);
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
+        }
+
+        .map-btn {
+            background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%);
+            color: white;
+            font-weight: 600;
+            border: 1px solid #0e7490;
+            padding: 0.3rem 0.6rem;
+            font-size: 0.75rem;
+        }
+
+        .map-btn:hover {
+            background: linear-gradient(135deg, #06b6d4 0%, #22d3ee 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(8, 145, 178, 0.4);
         }
 
         .serial-terminal-container {
@@ -236,6 +272,8 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
         }
 
         .serial-terminal-header h2 {
@@ -249,6 +287,35 @@
             display: flex;
             align-items: center;
             gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .terminal-filter-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .terminal-filter-group label {
+            color: #c084fc;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .terminal-filter-select {
+            background: rgba(15, 10, 26, 0.95);
+            border: 1px solid #8b5cf6;
+            border-radius: 4px;
+            color: #e0e0e0;
+            padding: 0.3rem 0.6rem;
+            font-size: 0.8rem;
+            min-width: 100px;
+        }
+
+        .terminal-filter-select:focus {
+            outline: none;
+            border-color: #c084fc;
+            box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.3);
         }
 
         .serial-status {
@@ -674,6 +741,13 @@
             margin-top: 0.5rem;
         }
 
+        .stat-hint {
+            color: #9ca3af;
+            font-size: 0.7rem;
+            margin-top: 0.25rem;
+            font-style: italic;
+        }
+
         .detections-container {
             background: rgba(45, 27, 105, 0.8);
             border-radius: 12px;
@@ -903,23 +977,250 @@
             box-shadow: 0 4px 12px rgba(236, 72, 153, 0.4);
         }
 
-        @media (max-width: 768px) {
+        .export-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .export-dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            background: rgba(45, 27, 105, 0.95);
+            min-width: 160px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            border: 1px solid #8b5cf6;
+            border-radius: 6px;
+            z-index: 1000;
+        }
+
+        .export-dropdown-content a {
+            color: #e0e0e0;
+            padding: 8px 12px;
+            text-decoration: none;
+            display: block;
+            font-size: 0.8rem;
+            transition: background-color 0.3s;
+        }
+
+        .export-dropdown-content a:hover {
+            background: rgba(139, 92, 246, 0.3);
+        }
+
+        .dropdown-toggle {
+            cursor: pointer;
+        }
+
+        .map-container {
+            background: rgba(45, 27, 105, 0.8);
+            border: 1px solid #8b5cf6;
+            border-radius: 12px;
+            margin-top: 1rem;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(139, 92, 246, 0.3);
+        }
+
+        .map-header {
+            background: rgba(45, 27, 105, 0.9);
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #8b5cf6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .map-header h2 {
+            color: #c084fc;
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .map-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .map-layer-group,
+        .map-filter-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .map-layer-group label,
+        .map-filter-group label {
+            color: #c084fc;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .map-layer-select,
+        .map-filter-select {
+            background: rgba(15, 10, 26, 0.95);
+            border: 1px solid #8b5cf6;
+            border-radius: 4px;
+            color: #e0e0e0;
+            padding: 0.3rem 0.6rem;
+            font-size: 0.8rem;
+            min-width: 120px;
+        }
+
+        .map-layer-select:focus,
+        .map-filter-select:focus {
+            outline: none;
+            border-color: #c084fc;
+            box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.3);
+        }
+
+        .map-status {
+            color: #a855f7;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .clear-map-btn {
+            background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+            color: white;
+            font-size: 0.8rem;
+            padding: 0.3rem 0.8rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .clear-map-btn:hover {
+            background: linear-gradient(135deg, #ef4444 0%, #f87171 100%);
+            transform: translateY(-1px);
+        }
+
+        .map-content {
+            padding: 0;
+        }
+
+        .leaflet-popup-content {
+            color: #333;
+            font-size: 0.9rem;
+        }
+
+        .leaflet-popup-content h3 {
+            margin: 0 0 0.5rem 0;
+            color: #ec4899;
+        }
+
+        .map-legend {
+            background: rgba(15, 10, 26, 0.9);
+            border: 1px solid #8b5cf6;
+            border-radius: 6px;
+            padding: 0.5rem;
+            margin-top: 0.5rem;
+            font-size: 0.8rem;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .legend-title {
+            color: #c084fc;
+            margin: 0;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .legend-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.75rem;
+            white-space: nowrap;
+        }
+
+        .legend-marker {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid;
+        }
+
+        .wifi-session { background: #ef4444; border-color: #22c55e; }
+        .wifi-cumulative { background: #ef4444; border-color: #f59e0b; }
+        .ble-session { background: #3b82f6; border-color: #22c55e; }
+        .ble-cumulative { background: #3b82f6; border-color: #f59e0b; }
+
+        @media (max-width: 1200px) {
             .header-content {
-                flex-direction: column;
-                gap: 1rem;
-                align-items: stretch;
+                grid-template-areas: 
+                    "title title"
+                    "controls buttons";
+                grid-template-columns: 1fr auto;
+            }
+            
+            .header-title {
+                text-align: center;
+            }
+            
+            .header-controls {
+                justify-content: center;
+            }
+            
+            .header-buttons {
+                justify-content: center;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .header-content {
+                grid-template-areas: 
+                    "title title"
+                    "controls controls"
+                    "buttons buttons";
+                grid-template-columns: 1fr;
+            }
+            
+            .header-title {
+                text-align: center;
+            }
+            
+            .header-controls {
+                justify-content: center;
+            }
+            
+            .header-buttons {
+                justify-content: center;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                padding: 0.75rem;
             }
             
             .flock-you-title {
-                font-size: 1.2rem;
-                text-align: center;
-                order: -1;
+                font-size: 1.1rem;
+                letter-spacing: 1px;
+            }
+            
+            .header-controls {
+                margin-top: 0.5rem;
             }
             
             .controls {
                 flex-direction: column;
                 align-items: stretch;
-                gap: 1rem;
+                gap: 0.75rem;
                 width: 100%;
             }
             
@@ -929,13 +1230,38 @@
                 justify-content: space-between;
             }
             
-            .header-buttons {
-                justify-content: center;
+            .action-buttons {
+                flex-direction: column;
+                gap: 0.5rem;
                 width: 100%;
+            }
+            
+            .serial-terminal-btn,
+            .oui-search-btn,
+            .map-btn {
+                width: 100%;
+                text-align: center;
             }
             
             .detection-details {
                 grid-template-columns: 1fr;
+            }
+            
+            select {
+                min-width: 80px;
+                max-width: none;
+                flex: 1;
+            }
+            
+            .port-controls {
+                flex: 1;
+                gap: 0.25rem;
+            }
+            
+            .refresh-btn {
+                width: 28px;
+                height: 28px;
+                font-size: 0.7rem;
             }
         }
     </style>
@@ -944,50 +1270,57 @@
 
     <div class="header">
         <div class="header-content">
-            <h1 class="flock-you-title">FLOCK-YOU</h1>
+            <div class="header-title">
+                <h1 class="flock-you-title">FLOCK-YOU</h1>
+            </div>
             
-            <div class="controls">
-                <div class="device-control-group">
-                    <div class="status-indicator" id="flockStatus"></div>
-                    <label>Sniffer:</label>
-                    <div class="port-controls">
-                        <select id="flockDeviceSelect">
-                            <option value="">Select Port</option>
-                        </select>
-                        <button id="refreshFlockPortsBtn" class="refresh-btn" title="Refresh ports" onclick="loadFlockPorts()">↻</button>
+            <div class="header-controls">
+                <div class="controls">
+                    <div class="device-control-group">
+                        <div class="status-indicator" id="flockStatus"></div>
+                        <label>Sniffer:</label>
+                        <div class="port-controls">
+                            <select id="flockDeviceSelect">
+                                <option value="">Select Port</option>
+                            </select>
+                            <button id="refreshFlockPortsBtn" class="refresh-btn" title="Refresh ports" onclick="loadFlockPorts()">↻</button>
+                        </div>
+                        <button id="connectFlockBtn">Connect</button>
+                        <button id="disconnectFlockBtn" class="danger" style="display: none;">Disconnect</button>
                     </div>
-                    <button id="connectFlockBtn">Connect</button>
-                    <button id="disconnectFlockBtn" class="danger" style="display: none;">Disconnect</button>
-                </div>
-                
-                <div class="device-control-group">
-                    <div class="status-indicator" id="gpsStatus"></div>
-                    <label>GPS:</label>
-                    <div class="port-controls">
-                        <select id="gpsPortSelect">
-                            <option value="">Select Port</option>
-                        </select>
-                        <button id="refreshGpsPortsBtn" class="refresh-btn" title="Refresh ports" onclick="loadGpsPorts()">↻</button>
+                    
+                    <div class="device-control-group">
+                        <div class="status-indicator" id="gpsStatus"></div>
+                        <label>GPS:</label>
+                        <div class="port-controls">
+                            <select id="gpsPortSelect">
+                                <option value="">Select Port</option>
+                            </select>
+                            <button id="refreshGpsPortsBtn" class="refresh-btn" title="Refresh ports" onclick="loadGpsPorts()">↻</button>
+                        </div>
+                        <button id="connectGpsBtn">Connect</button>
+                        <button id="disconnectGpsBtn" class="danger" style="display: none;">Disconnect</button>
                     </div>
-                    <button id="connectGpsBtn">Connect</button>
-                    <button id="disconnectGpsBtn" class="danger" style="display: none;">Disconnect</button>
-                </div>
-                
-                <div class="control-group">
-                    <label>Filter:</label>
-                    <select id="filterSelect">
-                        <option value="all">All Detections</option>
-                        <option value="probe_request">WiFi Probe Requests</option>
-                        <option value="beacon">WiFi Beacons</option>
-                        <option value="mac_prefix">MAC Address</option>
-                        <option value="device_name">BLE Device Name</option>
-                    </select>
+                    
+                    <div class="control-group">
+                        <label>Filter:</label>
+                        <select id="filterSelect">
+                            <option value="all">All Detections</option>
+                            <option value="probe_request">WiFi Probe Requests</option>
+                            <option value="beacon">WiFi Beacons</option>
+                            <option value="mac_prefix">MAC Address</option>
+                            <option value="device_name">BLE Device Name</option>
+                        </select>
+                    </div>
                 </div>
             </div>
             
             <div class="header-buttons">
-                <button id="serial-terminal-btn" class="serial-terminal-btn" onclick="toggleSerialTerminal()">Serial Terminal</button>
-                <button id="oui-search-btn" class="oui-search-btn" onclick="toggleOuiSearch()">Search OUI</button>
+                <div class="action-buttons">
+                    <button id="serial-terminal-btn" class="serial-terminal-btn" onclick="toggleSerialTerminal()">Terminal</button>
+                    <button id="oui-search-btn" class="oui-search-btn" onclick="toggleOuiSearch()">OUI</button>
+                    <button id="map-btn" class="map-btn" onclick="toggleMap()">Map</button>
+                </div>
             </div>
         </div>
     </div>
@@ -996,19 +1329,23 @@
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-number" id="totalDetections">0</div>
-                <div class="stat-label">Total Detections</div>
+                <div class="stat-label">Session Detections</div>
+                <div class="stat-hint">(Hover for cumulative)</div>
             </div>
             <div class="stat-card">
                 <div class="stat-number" id="wifiDetections">0</div>
                 <div class="stat-label">WiFi Detections</div>
+                <div class="stat-hint">(Hover for cumulative)</div>
             </div>
             <div class="stat-card">
                 <div class="stat-number" id="bleDetections">0</div>
                 <div class="stat-label">BLE Detections</div>
+                <div class="stat-hint">(Hover for cumulative)</div>
             </div>
             <div class="stat-card">
                 <div class="stat-number" id="gpsDetections">0</div>
                 <div class="stat-label">GPS Tagged</div>
+                <div class="stat-hint">(Hover for cumulative)</div>
             </div>
         </div>
 
@@ -1019,8 +1356,15 @@
                     <div class="detection-search-group">
                         <input type="text" id="detectionSearchInput" class="detection-search-input" placeholder="Search detections..." onkeyup="searchDetections()">
                     </div>
-                    <button class="export-btn" onclick="exportCSV()">Export CSV</button>
-                    <button class="export-btn" onclick="exportKML()">Export KML</button>
+                    <div class="export-dropdown">
+                        <button class="export-btn dropdown-toggle" onclick="toggleExportDropdown()">Export ▼</button>
+                        <div class="export-dropdown-content" id="exportDropdown">
+                            <a href="#" onclick="exportCSV('session')">Session CSV</a>
+                            <a href="#" onclick="exportKML('session')">Session KML</a>
+                            <a href="#" onclick="exportCSV('cumulative')">Cumulative CSV</a>
+                            <a href="#" onclick="exportKML('cumulative')">Cumulative KML</a>
+                        </div>
+                    </div>
                     <button class="clear-btn" onclick="clearDetections()">Clear All</button>
                 </div>
             </div>
@@ -1036,6 +1380,14 @@
             <div class="serial-terminal-header">
                 <h2>Serial Terminal</h2>
                 <div class="serial-controls">
+                    <div class="terminal-filter-group">
+                        <label for="terminalFilter">Filter:</label>
+                        <select id="terminalFilter" class="terminal-filter-select" onchange="filterTerminalData()">
+                            <option value="all">All Data</option>
+                            <option value="sniffer">Sniffer Only</option>
+                            <option value="gps">GPS Only</option>
+                        </select>
+                    </div>
                     <span class="serial-status">Status: <span id="serialConnectionStatus">Disconnected</span></span>
                     <button class="clear-terminal-btn" onclick="clearSerialTerminal()">Clear Terminal</button>
                 </div>
@@ -1065,8 +1417,60 @@
                 </div>
             </div>
         </div>
+
+        <div class="map-container" id="mapContainer" style="display: none;">
+            <div class="map-header">
+                <h2>Detection Map</h2>
+                <div class="map-controls">
+                    <div class="map-layer-group">
+                        <label for="mapLayer">Layer:</label>
+                        <select id="mapLayer" class="map-layer-select" onchange="changeMapLayer()">
+                            <option value="osm">OpenStreetMap</option>
+                            <option value="satellite">Satellite</option>
+                            <option value="topo">Topographic</option>
+                        </select>
+                    </div>
+                    <div class="map-filter-group">
+                        <label for="mapFilter">Data:</label>
+                        <select id="mapFilter" class="map-filter-select" onchange="filterMapData()">
+                            <option value="session">Session Only</option>
+                            <option value="cumulative">Cumulative Only</option>
+                            <option value="both">Session + Cumulative</option>
+                        </select>
+                    </div>
+                    <span class="map-status">Showing: <span id="mapDetectionCount">0</span> detections</span>
+                    <button class="clear-map-btn" onclick="clearMapMarkers()">Clear Markers</button>
+                </div>
+            </div>
+            <div class="map-content" id="mapContent">
+                <div id="map" style="height: 400px; width: 100%;"></div>
+                <div class="map-legend">
+                    <h4 class="legend-title">Legend:</h4>
+                    <div class="legend-items">
+                        <div class="legend-item">
+                            <div class="legend-marker wifi-session"></div>
+                            <span>WiFi (Session)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-marker wifi-cumulative"></div>
+                            <span>WiFi (Cumulative)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-marker ble-session"></div>
+                            <span>BLE (Session)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-marker ble-cumulative"></div>
+                            <span>BLE (Cumulative)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script>
         const socket = io({
             transports: ['websocket', 'polling'],
@@ -1076,18 +1480,26 @@
             reconnectionDelayMax: 5000
         });
         let detections = [];
+        let cumulativeDetections = [];
         let gpsConnected = false;
         const max_reconnect_attempts = 5;
         let userInteractingWithPorts = false; // Flag to prevent auto-refresh interference
+        let terminalFilter = 'all';
+        let allTerminalData = [];
+        let map = null;
+        let mapMarkers = [];
+        let mapLayers = {};
+        let mapFilter = 'session';
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
-            
             loadDetections();
+            loadCumulativeDetections();
             loadFlockPorts();
             loadGpsPorts();
             setupEventListeners();
             loadStatus();
+            loadSettings();
             
             // Periodic status refresh every 5 seconds
             setInterval(loadStatus, 5000);
@@ -1113,6 +1525,15 @@
         function setupEventListeners() {
             document.getElementById('filterSelect').addEventListener('change', function() {
                 filterDetections(this.value);
+                saveSettings();
+            });
+
+            document.getElementById('flockDeviceSelect').addEventListener('change', function() {
+                saveSettings();
+            });
+
+            document.getElementById('gpsPortSelect').addEventListener('change', function() {
+                saveSettings();
             });
 
             document.getElementById('connectFlockBtn').addEventListener('click', connectFlock);
@@ -1149,6 +1570,52 @@
                 .catch(error => {
                     console.error('Error loading detections:', error);
                 });
+        }
+
+        function loadSettings() {
+            fetch('/api/settings')
+                .then(response => response.json())
+                .then(settings => {
+                    console.log('Loaded settings:', settings);
+                    
+                    // Apply settings to UI
+                    if (settings.gps_port) {
+                        document.getElementById('gpsPortSelect').value = settings.gps_port;
+                    }
+                    if (settings.flock_port) {
+                        document.getElementById('flockDeviceSelect').value = settings.flock_port;
+                    }
+                    if (settings.filter) {
+                        document.getElementById('filterSelect').value = settings.filter;
+                        filterDetections(settings.filter);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading settings:', error);
+                });
+        }
+
+        function saveSettings() {
+            const settings = {
+                gps_port: document.getElementById('gpsPortSelect').value,
+                flock_port: document.getElementById('flockDeviceSelect').value,
+                filter: document.getElementById('filterSelect').value
+            };
+            
+            fetch('/api/settings', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(settings)
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Settings saved:', data);
+            })
+            .catch(error => {
+                console.error('Error saving settings:', error);
+            });
         }
 
         function loadGpsPorts() {
@@ -1439,6 +1906,19 @@
             document.getElementById('wifiDetections').textContent = wifi;
             document.getElementById('bleDetections').textContent = ble;
             document.getElementById('gpsDetections').textContent = gps;
+            
+            // Also update with cumulative stats in tooltip or additional display
+            fetch('/api/stats')
+                .then(response => response.json())
+                .then(stats => {
+                    document.getElementById('totalDetections').title = `Session: ${stats.session.total} | Cumulative: ${stats.cumulative.total}`;
+                    document.getElementById('wifiDetections').title = `Session: ${stats.session.wifi} | Cumulative: ${stats.cumulative.wifi}`;
+                    document.getElementById('bleDetections').title = `Session: ${stats.session.ble} | Cumulative: ${stats.cumulative.ble}`;
+                    document.getElementById('gpsDetections').title = `Session: ${stats.session.gps} | Cumulative: ${stats.cumulative.gps}`;
+                })
+                .catch(error => {
+                    console.error('Error loading stats:', error);
+                });
         }
 
         function renderDetections(detectionsToRender = detections) {
@@ -1518,13 +1998,32 @@
             }).join('');
         }
 
-        function exportCSV() {
-            window.location.href = '/api/export/csv';
+        function exportCSV(type = 'session') {
+            window.location.href = `/api/export/csv?type=${type}`;
+            closeExportDropdown();
         }
 
-        function exportKML() {
-            window.location.href = '/api/export/kml';
+        function exportKML(type = 'session') {
+            window.location.href = `/api/export/kml?type=${type}`;
+            closeExportDropdown();
         }
+
+        function toggleExportDropdown() {
+            const dropdown = document.getElementById('exportDropdown');
+            dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function closeExportDropdown() {
+            document.getElementById('exportDropdown').style.display = 'none';
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const dropdown = document.querySelector('.export-dropdown');
+            if (!dropdown.contains(event.target)) {
+                closeExportDropdown();
+            }
+        });
 
         function clearDetections() {
             if (confirm('Are you sure you want to clear all detections?')) {
@@ -1593,6 +2092,11 @@
             
             updateStats();
             renderDetections();
+            
+            // Update map if visible
+            if (map && document.getElementById('mapContainer').style.display !== 'none') {
+                updateMapMarkers();
+            }
         });
 
         socket.on('detection_updated', function(detection) {
@@ -1610,6 +2114,11 @@
                 detections[existingIndex] = detection;
                 updateStats();
                 renderDetections();
+                
+                // Update map if visible
+                if (map && document.getElementById('mapContainer').style.display !== 'none') {
+                    updateMapMarkers();
+                }
             }
         });
 
@@ -1640,6 +2149,11 @@
             detections = [];
             updateStats();
             renderDetections();
+            
+            // Clear map markers
+            if (map) {
+                clearMapMarkers();
+            }
         });
 
         socket.on('flock_reconnected', function(data) {
@@ -1738,6 +2252,36 @@
 
         function addSerialLine(text, type = 'normal') {
             console.log('Adding serial line:', text, 'type:', type);
+            
+            // Store all terminal data
+            allTerminalData.push({ text, type, timestamp: Date.now() });
+            
+            // Keep only last 1000 lines
+            if (allTerminalData.length > 1000) {
+                allTerminalData.shift();
+            }
+            
+            // Apply current filter
+            if (shouldShowLine(text, type)) {
+                displaySerialLine(text, type);
+            }
+        }
+
+        function shouldShowLine(text, type) {
+            if (terminalFilter === 'all') return true;
+            
+            const textLower = text.toLowerCase();
+            if (terminalFilter === 'gps' && (textLower.includes('gps') || textLower.includes('$gp') || textLower.includes('$gn') || textLower.includes('nmea'))) {
+                return true;
+            }
+            if (terminalFilter === 'sniffer' && !textLower.includes('gps') && (textLower.includes('detection') || textLower.includes('wifi') || textLower.includes('ble') || textLower.includes('mac') || textLower.includes('channel') || textLower.includes('rssi'))) {
+                return true;
+            }
+            
+            return false;
+        }
+
+        function displaySerialLine(text, type) {
             const outputElement = document.getElementById('serialTerminalOutput');
             
             if (!outputElement) {
@@ -1758,7 +2302,27 @@
             outputElement.scrollTop = outputElement.scrollHeight;
         }
 
+        function filterTerminalData() {
+            terminalFilter = document.getElementById('terminalFilter').value;
+            const outputElement = document.getElementById('serialTerminalOutput');
+            
+            // Clear current display
+            outputElement.innerHTML = '';
+            
+            // Re-display filtered data
+            allTerminalData.forEach(item => {
+                if (shouldShowLine(item.text, item.type)) {
+                    displaySerialLine(item.text, item.type);
+                }
+            });
+            
+            if (outputElement.children.length === 0) {
+                outputElement.innerHTML = '<div class="terminal-placeholder">No data matches current filter...</div>';
+            }
+        }
+
         function clearSerialTerminal() {
+            allTerminalData = [];
             const outputElement = document.getElementById('serialTerminalOutput');
             outputElement.innerHTML = '<div class="terminal-placeholder">Terminal cleared...</div>';
         }
@@ -1998,6 +2562,184 @@
                 button.textContent = originalText;
                 button.disabled = false;
             });
+        }
+
+        // Map functions
+        function toggleMap() {
+            const container = document.getElementById('mapContainer');
+            const button = document.getElementById('map-btn');
+            
+            if (container.style.display === 'none') {
+                container.style.display = 'block';
+                button.textContent = 'Hide Map';
+                button.style.background = 'linear-gradient(135deg, #dc2626 0%, #ef4444 100%)';
+                
+                if (!map) {
+                    initializeMap();
+                }
+                // Load fresh cumulative data when opening map
+                loadCumulativeDetections();
+                updateMapMarkers();
+            } else {
+                container.style.display = 'none';
+                button.textContent = 'Map';
+                button.style.background = 'linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)';
+            }
+        }
+
+        function initializeMap() {
+            // Initialize the map
+            map = L.map('map').setView([37.7749, -122.4194], 10); // Default to San Francisco
+            
+            // Define map layers
+            mapLayers.osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 19
+            });
+            
+            mapLayers.satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: '© Esri, DigitalGlobe, GeoEye, Earthstar Geographics, CNES/Airbus DS',
+                maxZoom: 19
+            });
+            
+            mapLayers.topo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenTopoMap contributors',
+                maxZoom: 19
+            });
+            
+            // Add default layer
+            mapLayers.osm.addTo(map);
+        }
+
+        function changeMapLayer() {
+            const selectedLayer = document.getElementById('mapLayer').value;
+            
+            // Remove all layers
+            Object.values(mapLayers).forEach(layer => {
+                map.removeLayer(layer);
+            });
+            
+            // Add selected layer
+            mapLayers[selectedLayer].addTo(map);
+        }
+
+        function updateMapMarkers() {
+            if (!map) return;
+            
+            // Clear existing markers
+            clearMapMarkers();
+            
+            // Get filtered detection data based on current filter
+            let detectionsToShow = [];
+            
+            if (mapFilter === 'session') {
+                detectionsToShow = detections.filter(d => d.gps && d.gps.latitude && d.gps.longitude);
+            } else if (mapFilter === 'cumulative') {
+                detectionsToShow = cumulativeDetections.filter(d => d.gps && d.gps.latitude && d.gps.longitude);
+            } else if (mapFilter === 'both') {
+                // Combine session and cumulative, avoiding duplicates by MAC address
+                const sessionGps = detections.filter(d => d.gps && d.gps.latitude && d.gps.longitude);
+                const cumulativeGps = cumulativeDetections.filter(d => d.gps && d.gps.latitude && d.gps.longitude);
+                
+                // Create a map of MAC addresses from session data
+                const sessionMacs = new Set(sessionGps.map(d => d.mac_address));
+                
+                // Add session detections first
+                detectionsToShow = [...sessionGps];
+                
+                // Add cumulative detections that aren't in current session
+                cumulativeGps.forEach(d => {
+                    if (!sessionMacs.has(d.mac_address)) {
+                        detectionsToShow.push(d);
+                    }
+                });
+            }
+            
+            detectionsToShow.forEach((detection, index) => {
+                const lat = detection.gps.latitude;
+                const lng = detection.gps.longitude;
+                
+                // Determine if this is from session or cumulative
+                const isSessionData = detections.some(d => d.mac_address === detection.mac_address);
+                
+                // Create custom icon based on detection type and data source
+                let iconColor = detection.protocol === 'wifi' ? '#ef4444' : '#3b82f6'; // red for wifi, blue for ble
+                let borderColor = isSessionData ? '#22c55e' : '#f59e0b'; // green border for session, orange for cumulative
+                
+                const icon = L.divIcon({
+                    className: 'custom-marker',
+                    html: `<div style="background-color: ${iconColor}; width: 12px; height: 12px; border-radius: 50%; border: 2px solid ${borderColor}; box-shadow: 0 0 4px rgba(0,0,0,0.5);"></div>`,
+                    iconSize: [16, 16],
+                    iconAnchor: [8, 8]
+                });
+                
+                const marker = L.marker([lat, lng], { icon }).addTo(map);
+                
+                // Create popup content with data source indicator
+                const dataSource = isSessionData ? 'Session' : 'Cumulative';
+                const popupContent = `
+                    <h3>Detection #${detection.id} (${dataSource})</h3>
+                    <strong>Protocol:</strong> ${detection.protocol}<br>
+                    <strong>Method:</strong> ${detection.detection_method}<br>
+                    <strong>MAC:</strong> ${detection.mac_address}<br>
+                    ${detection.ssid ? `<strong>SSID:</strong> ${detection.ssid}<br>` : ''}
+                    ${detection.manufacturer ? `<strong>Manufacturer:</strong> ${detection.manufacturer}<br>` : ''}
+                    <strong>RSSI:</strong> ${detection.last_rssi || detection.rssi} dBm<br>
+                    <strong>GPS:</strong> ${lat.toFixed(6)}, ${lng.toFixed(6)}<br>
+                    <strong>Satellites:</strong> ${detection.gps.satellites}<br>
+                    <strong>Count:</strong> ${detection.detection_count || 1}<br>
+                    <strong>Source:</strong> ${dataSource} Data
+                `;
+                
+                marker.bindPopup(popupContent);
+                mapMarkers.push(marker);
+            });
+            
+            // Update detection count
+            document.getElementById('mapDetectionCount').textContent = detectionsToShow.length;
+            
+            // Fit map to markers if any exist
+            if (mapMarkers.length > 0) {
+                const group = new L.featureGroup(mapMarkers);
+                map.fitBounds(group.getBounds().pad(0.1));
+            }
+        }
+
+        function filterMapData() {
+            mapFilter = document.getElementById('mapFilter').value;
+            updateMapMarkers();
+        }
+
+        function loadCumulativeDetections() {
+            fetch('/api/stats')
+                .then(response => response.json())
+                .then(stats => {
+                    // Load cumulative detections from server if available
+                    // For now, we'll fetch them via a new endpoint
+                    return fetch('/api/detections?type=cumulative');
+                })
+                .then(response => response.json())
+                .then(data => {
+                    cumulativeDetections = data;
+                    console.log('Loaded cumulative detections:', cumulativeDetections.length);
+                    
+                    // Update map if it's open and showing cumulative data
+                    if (map && document.getElementById('mapContainer').style.display !== 'none') {
+                        updateMapMarkers();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading cumulative detections:', error);
+                    cumulativeDetections = [];
+                });
+        }
+
+        function clearMapMarkers() {
+            mapMarkers.forEach(marker => {
+                map.removeLayer(marker);
+            });
+            mapMarkers = [];
+            document.getElementById('mapDetectionCount').textContent = '0';
         }
     </script>
 </body>
