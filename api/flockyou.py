@@ -138,10 +138,18 @@ def gps_reader():
             try:
                 line = serial_connection.readline().decode('utf-8', errors='ignore')
                 if line:
+                    # Send raw GPS data to serial terminal
+                    safe_socket_emit('serial_data', f"GPS: {line.strip()}", room='serial_terminal')
+                    
                     parsed = parse_nmea_sentence(line)
                     if parsed:
                         gps_data = parsed
                         safe_socket_emit('gps_update', parsed)
+                        
+                        # Also send parsed GPS data to terminal
+                        if parsed.get('fix_quality') > 0:
+                            gps_info = f"GPS Fix: {parsed.get('latitude', 'N/A')}, {parsed.get('longitude', 'N/A')} - {parsed.get('satellites', 0)} satellites"
+                            safe_socket_emit('serial_data', gps_info, room='serial_terminal')
             except Exception as e:
                 print(f"GPS read error: {e}")
                 with connection_lock:

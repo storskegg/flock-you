@@ -86,6 +86,37 @@
             gap: 0.5rem;
         }
 
+        .port-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .refresh-btn {
+            background: linear-gradient(135deg, #6b7280 0%, #9ca3af 100%);
+            color: white;
+            font-weight: 600;
+            border: 1px solid #4b5563;
+            padding: 0.3rem 0.5rem;
+            font-size: 0.8rem;
+            min-width: auto;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .refresh-btn:hover {
+            background: linear-gradient(135deg, #9ca3af 0%, #d1d5db 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(107, 114, 128, 0.4);
+        }
+
+        .refresh-btn:active {
+            transform: translateY(0);
+        }
+
         .header-buttons {
             display: flex;
             align-items: center;
@@ -605,6 +636,11 @@
             100% { opacity: 1; }
         }
 
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
         .main-content {
             padding: 1rem;
             width: 100%;
@@ -914,9 +950,12 @@
                 <div class="device-control-group">
                     <div class="status-indicator" id="flockStatus"></div>
                     <label>Sniffer:</label>
-                    <select id="flockDeviceSelect">
-                        <option value="">Select Port</option>
-                    </select>
+                    <div class="port-controls">
+                        <select id="flockDeviceSelect">
+                            <option value="">Select Port</option>
+                        </select>
+                        <button id="refreshFlockPortsBtn" class="refresh-btn" title="Refresh ports" onclick="loadFlockPorts()">↻</button>
+                    </div>
                     <button id="connectFlockBtn">Connect</button>
                     <button id="disconnectFlockBtn" class="danger" style="display: none;">Disconnect</button>
                 </div>
@@ -924,9 +963,12 @@
                 <div class="device-control-group">
                     <div class="status-indicator" id="gpsStatus"></div>
                     <label>GPS:</label>
-                    <select id="gpsPortSelect">
-                        <option value="">Select Port</option>
-                    </select>
+                    <div class="port-controls">
+                        <select id="gpsPortSelect">
+                            <option value="">Select Port</option>
+                        </select>
+                        <button id="refreshGpsPortsBtn" class="refresh-btn" title="Refresh ports" onclick="loadGpsPorts()">↻</button>
+                    </div>
                     <button id="connectGpsBtn">Connect</button>
                     <button id="disconnectGpsBtn" class="danger" style="display: none;">Disconnect</button>
                 </div>
@@ -1036,6 +1078,7 @@
         let detections = [];
         let gpsConnected = false;
         const max_reconnect_attempts = 5;
+        let userInteractingWithPorts = false; // Flag to prevent auto-refresh interference
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
@@ -1049,11 +1092,14 @@
             // Periodic status refresh every 5 seconds
             setInterval(loadStatus, 5000);
             
-            // Periodic port refresh every 10 seconds
+            // Periodic port refresh every 30 seconds (reduced from 10 seconds)
             setInterval(function() {
-                loadFlockPorts();
-                loadGpsPorts();
-            }, 10000);
+                // Only refresh if user is not actively interacting with ports
+                if (!userInteractingWithPorts) {
+                    loadFlockPorts();
+                    loadGpsPorts();
+                }
+            }, 30000);
             
             // Connection health check every 30 seconds
             setInterval(function() {
@@ -1073,6 +1119,22 @@
             document.getElementById('disconnectFlockBtn').addEventListener('click', disconnectFlock);
             document.getElementById('connectGpsBtn').addEventListener('click', connectGps);
             document.getElementById('disconnectGpsBtn').addEventListener('click', disconnectGps);
+            
+            // Add event listeners for port dropdowns to prevent auto-refresh interference
+            const flockSelect = document.getElementById('flockDeviceSelect');
+            const gpsSelect = document.getElementById('gpsPortSelect');
+            
+            flockSelect.addEventListener('focus', () => { userInteractingWithPorts = true; });
+            flockSelect.addEventListener('blur', () => { 
+                setTimeout(() => { userInteractingWithPorts = false; }, 1000); 
+            });
+            flockSelect.addEventListener('change', () => { userInteractingWithPorts = true; });
+            
+            gpsSelect.addEventListener('focus', () => { userInteractingWithPorts = true; });
+            gpsSelect.addEventListener('blur', () => { 
+                setTimeout(() => { userInteractingWithPorts = false; }, 1000); 
+            });
+            gpsSelect.addEventListener('change', () => { userInteractingWithPorts = true; });
         }
 
         function loadDetections() {
@@ -1090,11 +1152,24 @@
         }
 
         function loadGpsPorts() {
+            const select = document.getElementById('gpsPortSelect');
+            const refreshBtn = document.getElementById('refreshGpsPortsBtn');
+            const currentSelection = select.value; // Preserve current selection
+            
+            // Show loading state
+            refreshBtn.textContent = '⟳';
+            refreshBtn.style.animation = 'spin 1s linear infinite';
+            
+            // Add a subtle visual indicator if this is an auto-refresh
+            if (!userInteractingWithPorts) {
+                refreshBtn.title = 'Auto-refreshing ports...';
+            }
+            
             fetch('/api/gps/ports')
                 .then(response => response.json())
                 .then(ports => {
                     console.log('GPS ports loaded:', ports.length);
-                    const select = document.getElementById('gpsPortSelect');
+                    
                     select.innerHTML = '<option value="">Select GPS Port</option>';
                     ports.forEach(port => {
                         const option = document.createElement('option');
@@ -1102,18 +1177,45 @@
                         option.textContent = `${port.device} - ${port.description}`;
                         select.appendChild(option);
                     });
+                    
+                    // Restore selection if it still exists in the new list
+                    if (currentSelection && ports.some(p => p.device === currentSelection)) {
+                        select.value = currentSelection;
+                    }
+                    
+                    // Reset refresh button
+                    refreshBtn.textContent = '↻';
+                    refreshBtn.style.animation = '';
+                    refreshBtn.title = 'Refresh ports';
                 })
                 .catch(error => {
                     console.error('Error loading GPS ports:', error);
+                    // Reset refresh button on error
+                    refreshBtn.textContent = '↻';
+                    refreshBtn.style.animation = '';
+                    refreshBtn.title = 'Refresh ports';
                 });
         }
 
         function loadFlockPorts() {
+            const select = document.getElementById('flockDeviceSelect');
+            const refreshBtn = document.getElementById('refreshFlockPortsBtn');
+            const currentSelection = select.value; // Preserve current selection
+            
+            // Show loading state
+            refreshBtn.textContent = '⟳';
+            refreshBtn.style.animation = 'spin 1s linear infinite';
+            
+            // Add a subtle visual indicator if this is an auto-refresh
+            if (!userInteractingWithPorts) {
+                refreshBtn.title = 'Auto-refreshing ports...';
+            }
+            
             fetch('/api/flock/ports')
                 .then(response => response.json())
                 .then(ports => {
                     console.log('Flock ports loaded:', ports.length);
-                    const select = document.getElementById('flockDeviceSelect');
+                    
                     select.innerHTML = '<option value="">Select Flock You Port</option>';
                     ports.forEach(port => {
                         const option = document.createElement('option');
@@ -1121,9 +1223,23 @@
                         option.textContent = `${port.device} - ${port.description}`;
                         select.appendChild(option);
                     });
+                    
+                    // Restore selection if it still exists in the new list
+                    if (currentSelection && ports.some(p => p.device === currentSelection)) {
+                        select.value = currentSelection;
+                    }
+                    
+                    // Reset refresh button
+                    refreshBtn.textContent = '↻';
+                    refreshBtn.style.animation = '';
+                    refreshBtn.title = 'Refresh ports';
                 })
                 .catch(error => {
                     console.error('Error loading Flock ports:', error);
+                    // Reset refresh button on error
+                    refreshBtn.textContent = '↻';
+                    refreshBtn.style.animation = '';
+                    refreshBtn.title = 'Refresh ports';
                 });
         }
 
