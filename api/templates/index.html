@@ -862,6 +862,17 @@
             letter-spacing: 0.5px;
         }
 
+        .gps-tag {
+            background: #22c55e;
+            color: white;
+            padding: 0.15rem 0.4rem;
+            border-radius: 3px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
         .detection-count {
             background: #059669;
             color: white;
@@ -1979,6 +1990,7 @@
                                 <div class="detection-type-badge">
                                     <span class="detection-type">${detection.detection_method ? detection.detection_method.toUpperCase() : 'UNKNOWN'}</span>
                                     <span class="detection-count">${count}×</span>
+                                    ${detection.gps && detection.gps.latitude !== undefined ? '<span class="gps-tag">GPS</span>' : ''}
                                 </div>
                                 ${gpsLink}
                             </div>
@@ -2677,15 +2689,33 @@
                 
                 // Create popup content with data source indicator
                 const dataSource = isSessionData ? 'Session' : 'Cumulative';
+                const aliasText = detection.alias ? `<strong>Alias:</strong> ${detection.alias}<br>` : '';
+                
+                // GPS accuracy indicator
+                let gpsAccuracy = '';
+                if (detection.gps.time_diff !== undefined && detection.gps.time_diff !== null) {
+                    const timeDiff = detection.gps.time_diff;
+                    if (timeDiff < 5) {
+                        gpsAccuracy = ` <span style="color: #22c55e;">✓ Precise (${timeDiff.toFixed(1)}s)</span>`;
+                    } else if (timeDiff < 15) {
+                        gpsAccuracy = ` <span style="color: #f59e0b;">~ Good (${timeDiff.toFixed(1)}s)</span>`;
+                    } else {
+                        gpsAccuracy = ` <span style="color: #ef4444;">⚠ Approximate (${timeDiff.toFixed(1)}s)</span>`;
+                    }
+                } else {
+                    gpsAccuracy = ` <span style="color: #6b7280;">? Unknown accuracy</span>`;
+                }
+                
                 const popupContent = `
-                    <h3>Detection #${detection.id} (${dataSource})</h3>
+                    <h3>${detection.alias || `Detection #${detection.id}`} (${dataSource})</h3>
+                    ${aliasText}
                     <strong>Protocol:</strong> ${detection.protocol}<br>
                     <strong>Method:</strong> ${detection.detection_method}<br>
                     <strong>MAC:</strong> ${detection.mac_address}<br>
                     ${detection.ssid ? `<strong>SSID:</strong> ${detection.ssid}<br>` : ''}
                     ${detection.manufacturer ? `<strong>Manufacturer:</strong> ${detection.manufacturer}<br>` : ''}
                     <strong>RSSI:</strong> ${detection.last_rssi || detection.rssi} dBm<br>
-                    <strong>GPS:</strong> ${lat.toFixed(6)}, ${lng.toFixed(6)}<br>
+                    <strong>GPS:</strong> ${lat.toFixed(6)}, ${lng.toFixed(6)}${gpsAccuracy}<br>
                     <strong>Satellites:</strong> ${detection.gps.satellites}<br>
                     <strong>Count:</strong> ${detection.detection_count || 1}<br>
                     <strong>Source:</strong> ${dataSource} Data
