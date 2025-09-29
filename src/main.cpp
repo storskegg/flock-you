@@ -29,7 +29,12 @@
 
 // WiFi Promiscuous Mode Configuration
 #define MAX_CHANNEL 13
-#define CHANNEL_HOP_INTERVAL 2500  // milliseconds
+#define CHANNEL_HOP_INTERVAL 500  // milliseconds
+
+// BLE SCANNING CONFIGURATION
+#define BLE_SCAN_DURATION 1    // Seconds
+#define BLE_SCAN_INTERVAL 5000 // Milliseconds between scans
+static unsigned long last_ble_scan = 0;
 
 // Detection Pattern Limits
 #define MAX_SSID_PATTERNS 10
@@ -58,13 +63,14 @@ static const char* mac_prefixes[] = {
     
     // Flock WiFi devices
     "70:c9:4e", "3c:91:80", "d8:f3:bc", "80:30:49", "14:5a:fc",
-    "74:4c:a1", "08:3a:88", "9c:2f:9d",
+    "74:4c:a1", "08:3a:88", "9c:2f:9d", "94:08:53", "e4:aa:ea"
     
-    // Penguin devices
-    "cc:09:24", "ed:c7:63", "e8:ce:56", "ea:0c:ea", "d8:8f:14",
-    "f9:d9:c0", "f1:32:f9", "f6:a0:76", "e4:1c:9e", "e7:f2:43",
-    "e2:71:33", "da:91:a9", "e1:0e:15", "c8:ae:87", "f4:ed:b2",
-    "d8:bf:b5", "ee:8f:3c", "d7:2b:21", "ea:5a:98"
+    // Penguin devices - these are NOT OUI based, so use local ouis
+    // from the wigle.net db relative to your location 
+    // "cc:09:24", "ed:c7:63", "e8:ce:56", "ea:0c:ea", "d8:8f:14",
+    // "f9:d9:c0", "f1:32:f9", "f6:a0:76", "e4:1c:9e", "e7:f2:43",
+    // "e2:71:33", "da:91:a9", "e1:0e:15", "c8:ae:87", "f4:ed:b2",
+    // "d8:bf:b5", "ee:8f:3c", "d7:2b:21", "ea:5a:98"
 };
 
 // Device name patterns for BLE advertisement detection
@@ -468,7 +474,7 @@ void hop_channel()
         }
         esp_wifi_set_channel(current_channel, WIFI_SECOND_CHAN_NONE);
         last_channel_hop = now;
-        printf("Hopped to channel %d\n", current_channel);
+         printf("[WiFi] Hopped to channel %d\n", current_channel);
     }
 }
 
@@ -538,9 +544,15 @@ void loop()
         }
     }
     
-    // Run BLE scan
-    pBLEScan->start(1, false); // Scan for 1 second, don't clear results
-    pBLEScan->clearResults();
+    if (millis() - last_ble_scan >= BLE_SCAN_INTERVAL && !pBLEScan->isScanning()) {
+        printf("[BLE] scan...\n");
+        pBLEScan->start(BLE_SCAN_DURATION, false);
+        last_ble_scan = millis();
+    }
+    
+    if (pBLEScan->isScanning() == false && millis() - last_ble_scan > BLE_SCAN_DURATION * 1000) {
+        pBLEScan->clearResults();
+    }
     
     delay(100);
 }
