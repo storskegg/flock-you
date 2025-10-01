@@ -1130,49 +1130,60 @@ def get_all_oui():
 
 @app.route('/api/oui/refresh', methods=['POST'])
 def refresh_oui_database():
-    """Refresh OUI database from IEEE website"""
     global oui_database
     
     try:
         import urllib.request
+        import urllib.error
         import tempfile
         import os
         
-        # Download the latest OUI database
         url = "https://standards-oui.ieee.org/oui/oui.txt"
         print(f"Downloading OUI database from {url}...")
         
-        # Create a temporary file
+        req = urllib.request.Request(
+            url,
+            headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                'Accept': 'text/plain,text/html,application/xhtml+xml',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Connection': 'keep-alive'
+            }
+        )
+        
         with tempfile.NamedTemporaryFile(delete=False, suffix='.txt') as temp_file:
             temp_path = temp_file.name
-        
-        # Download the file
-        urllib.request.urlretrieve(url, temp_path)
-        
-        # Parse the downloaded file
+            
+        with urllib.request.urlopen(req, timeout=30) as response:
+            with open(temp_path, 'wb') as out_file:
+                out_file.write(response.read())
+                
+        print(f"Downloaded file to {temp_path}, parsing...")
         new_oui_database = {}
         with open(temp_path, 'r', encoding='utf-8', errors='ignore') as f:
             for line in f:
                 line = line.strip()
-                if line and not line.startswith('#') and '\t' in line:
-                    parts = line.split('\t')
-                    if len(parts) >= 3:
-                        mac = parts[0].strip().replace('-', '').upper()
-                        manufacturer = parts[2].strip()
-                        if len(mac) == 6 and manufacturer:
-                            new_oui_database[mac] = manufacturer
-        
-        # Clean up temporary file
+                if line and not line.startswith('#') and '(hex)' in line:
+                    parts = line.split('(hex)')
+                    if len(parts) == 2:
+                        mac_prefix = parts[0].strip().replace('-', '').replace(' ', '').upper()
+                        manufacturer = parts[1].strip()
+                        if mac_prefix and manufacturer and len(mac_prefix) == 6:
+                            new_oui_database[mac_prefix] = manufacturer
+                            
+        print(f"Parsed {len(new_oui_database)} entries from downloaded file")
         os.unlink(temp_path)
         
-        # Update the global database
+        if len(new_oui_database) < 1000:
+            raise Exception(f"Downloaded database appears incomplete ({len(new_oui_database)} entries). File may be corrupted or format changed.")
+
         oui_database = new_oui_database
         
-        # Save to local file
         with open('oui.txt', 'w', encoding='utf-8') as f:
-            for mac, manufacturer in oui_database.items():
-                f.write(f"{mac}\t{manufacturer}\n")
-        
+            for mac, manufacturer in sorted(oui_database.items()):
+                formatted_mac = f"{mac[0:2]}-{mac[2:4]}-{mac[4:6]}"
+                f.write(f"{formatted_mac}   (hex)\t\t\t\t{manufacturer}\n")
+                
         print(f"Successfully refreshed OUI database with {len(oui_database)} entries")
         
         return jsonify({
@@ -1180,13 +1191,28 @@ def refresh_oui_database():
             'message': 'Database refreshed successfully',
             'count': len(oui_database)
         })
+    
+    except urllib.error.HTTPError as e:
+        if e.code == 418:
+            return jsonify({
+                'status': 'error',
+                'message': 'IEEE server is refusing automated requests (HTTP 418). Please wait and try again later.'
+            }), 418
+        else:
+            return jsonify({
+                'status': 'error',
+                'message': f'HTTP error {e.code}: {str(e)}'
+            }), 500
         
     except Exception as e:
         print(f"Error refreshing OUI database: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
             'status': 'error',
             'message': f'Failed to refresh database: {str(e)}'
         }), 500
+
 
 # Socket.IO event handlers
 @socketio.on('connect')
@@ -1282,3 +1308,4 @@ if __name__ == '__main__':
         if serial_connection and serial_connection.is_open:
             serial_connection.close()
         print("Server stopped.")
+        
