@@ -1,0 +1,149 @@
+// Message definitions for implementing the JSON output types from main.cpp as
+// protocol buffers.
+//
+// This file is organized in the following manner:
+//   Enums
+//   Messages
+//
+// Enum contents are alphabetical.
+// Message fields are organized for efficient memory use, prioritizing for
+// 32-bit aligned memory space in an esp32s3. Message fields are numbered by data
+// type, with gaps being reserved for future additions.
+syntax = "proto3";
+
+// AdvertisementType tells us how a device is advertising. Bluetooth-specific
+enum AdvertisementType {
+    BLE_ADVERTISEMENT = 0;
+}
+
+// DetectionCriteria describes why we think this is a valid detection. Bluetooth & WIFI
+enum DetectionCriteria {
+    MAC_ONLY = 0;
+    NAME_AND_MAC = 1;
+    NAME_ONLY = 2;
+    SSID_AND_MAC = 3;
+    SSID_ONLY = 4;
+}
+
+// DeviceCategory tells us what type of device we're detecting
+enum DeviceCategory {
+    FLOCK_SAFETY = 0;
+}
+
+enum FrameType {
+    BEACON = 0;
+    PROBE_REQUEST = 1;
+}
+
+enum HighMedLow {
+    HIGH = 0;
+    MED = 1;
+    LOW = 2;
+}
+
+enum Protocol {
+    BLUETOOTH_LE = 0;
+    WIFI = 1;
+}
+
+enum PrimaryIndicator {
+    DEVICE_NAME = 0;
+    MAC_ADDRESS = 1;
+}
+
+enum SignalStrength {
+    MEDIUM = 0;
+    STRONG = 1;
+    WEAK = 2;
+}
+
+message BleDetection {
+    // 64bit fields
+    uint64 timestamp = 1;
+
+    reserved 2 to 9;
+
+    // 32bit fields
+    uint32 device_name_length = 10;
+    sint32 rssi = 11;
+    uint32 threat_score = 12;
+
+    reserved 13 to 19;
+
+    // Enum fields
+    AdvertisementType advertisement_type = 20;
+    HighMedLow alert_level = 21;
+    HighMedLow mac_match_confidence = 22;
+    HighMedLow name_match_confidence = 23;
+    DetectionCriteria detection_criteria = 24;
+    DeviceCategory device_category = 25;
+    PrimaryIndicator primary_indicator = 26;
+    Protocol protocol = 27;
+    SignalStrength signal_strength = 28;
+
+    reserved 29 to 49;
+
+    // string fields
+    string detection_time = 50;
+    string detection_method = 51;
+    string mac_address = 52;
+    string device_name = 53;
+    string mac_prefix = 54;
+    string vendor_oui = 55;
+    string matched_mac_pattern = 56;
+    string matched_name_pattern = 57;
+    string advertisement_description = 58;
+    string detection_reason = 59;
+
+    reserved 60 to 79;
+
+    // bool fields
+    bool has_device_name = 80;
+}
+
+message WifiDetection {
+    // 64bit fields
+    uint64 timestamp = 1;
+
+    reserved 2 to 9;
+
+    // 32bit fields
+    uint32 ssid_length = 10;
+    sint32 rssi = 11;
+    uint32 channel = 12;
+    uint32 threat_score = 13;
+
+    reserved 14 to 19;
+
+    // Enum fields
+    Protocol protocol = 20;
+    HighMedLow alert_level = 21;
+    DeviceCategory device_category = 22;
+    SignalStrength signal_strength = 23;
+    HighMedLow ssid_match_confidence = 24;
+    HighMedLow mac_match_confidence = 25;
+    DetectionCriteria detection_criteria = 26;
+    FrameType frame_type = 27;
+
+    reserved 28 to 49;
+
+    // string fields
+    string detection_time = 50;
+    string detection_method = 51;
+    string ssid = 52;
+    string mac_address = 53;
+    string mac_prefix = 54;
+    string vendor_oui = 55;
+    string matched_ssid_pattern = 56;
+    string matched_mac_pattern = 57;
+    string frame_description = 58;
+};
+
+// Payload Encapsulation so that we don't have to guess what we're decoding client-side
+message PayloadEncapsulation {
+    uint32 frame_id = 1;
+    reserved 2 to 4;
+    Protocol payload_type = 5;
+    reserved 6 to 9;
+    bytes payload_data = 10;
+}
