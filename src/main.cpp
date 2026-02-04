@@ -184,8 +184,13 @@ void heartbeat_pulse()
 }
 
 void lifebeat_pulse() {
-    beep(HEARTBEAT_FREQ, LIFEBEAT_DURATION);
+    digitalWrite(BUZZER_PIN, HIGH);
+    delay(20);
+    digitalWrite(BUZZER_PIN, LOW);
     delay(50);
+    digitalWrite(BUZZER_PIN, HIGH);
+    delay(20);
+    digitalWrite(BUZZER_PIN, LOW);
 }
 
 // ============================================================================
