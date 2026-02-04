@@ -5,10 +5,10 @@
 //   Enums
 //   Messages
 //
-// Enum contents are alphabetical.
+// Enum contents are (mostly) alphabetical.
 // Message fields are organized for efficient memory use, prioritizing for
-// 32-bit aligned memory space in an esp32s3. Message fields are numbered by data
-// type, with gaps being reserved for future additions.
+// 32-bit aligned memory space in an esp32s3. Message fields are numbered by
+// data type, with gaps being reserved for future additions.
 syntax = "proto3";
 
 // AdvertisementType tells us how a device is advertising. Bluetooth-specific
