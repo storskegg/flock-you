@@ -27,6 +27,9 @@
 #define DETECT_BEEP_DURATION 150 // Detection beep duration (faster)
 #define HEARTBEAT_DURATION 100   // Short heartbeat pulse
 
+#define LIFEBEAT_INTERVAL 10000
+#define LIFEBEAT_DURATION 50
+
 // WiFi Promiscuous Mode Configuration
 #define MAX_CHANNEL 13
 #define CHANNEL_HOP_INTERVAL 500  // milliseconds
@@ -135,7 +138,7 @@ static unsigned long last_detection_time = 0;
 static unsigned long last_heartbeat = 0;
 static NimBLEScan* pBLEScan;
 
-
+static unsigned long last_lifebeat = 0;
 
 // ============================================================================
 // AUDIO SYSTEM
@@ -178,6 +181,11 @@ void heartbeat_pulse()
     beep(HEARTBEAT_FREQ, HEARTBEAT_DURATION);
     delay(100);
     beep(HEARTBEAT_FREQ, HEARTBEAT_DURATION);
+}
+
+void lifebeat_pulse() {
+    beep(HEARTBEAT_FREQ, LIFEBEAT_DURATION);
+    delay(50);
 }
 
 // ============================================================================
@@ -716,6 +724,7 @@ void loop()
     // Handle heartbeat pulse if device is in range
     if (device_in_range) {
         unsigned long now = millis();
+        last_lifebeat = now;
         
         // Check if 10 seconds have passed since last heartbeat
         if (now - last_heartbeat >= 10000) {
@@ -729,6 +738,9 @@ void loop()
             device_in_range = false;
             triggered = false; // Allow new detections
         }
+    } else if (millis() - last_lifebeat >= LIFEBEAT_INTERVAL) {
+        lifebeat_pulse();
+        last_lifebeat = millis();
     }
     
     if (millis() - last_ble_scan >= BLE_SCAN_INTERVAL && !pBLEScan->isScanning()) {
