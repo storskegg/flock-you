@@ -1376,6 +1376,15 @@
                             <a href="#" onclick="exportKML('cumulative')">Cumulative KML</a>
                         </div>
                     </div>
+                    <div class="export-dropdown">
+                        <button class="export-btn dropdown-toggle" style="background:linear-gradient(135deg,#059669 0%,#10b981 100%);border-color:#047857" onclick="toggleImportDropdown()">Import ▼</button>
+                        <div class="export-dropdown-content" id="importDropdown">
+                            <a href="#" onclick="importFile('json')">Import JSON (from ESP32)</a>
+                            <a href="#" onclick="importFile('csv')">Import CSV (from ESP32)</a>
+                            <a href="#" onclick="importFile('kml')">Import KML (from ESP32)</a>
+                        </div>
+                    </div>
+                    <input type="file" id="importFileInput" accept=".json,.csv,.kml" style="display:none" onchange="handleImportFile()">
                     <button class="clear-btn" onclick="clearDetections()">Clear All</button>
                 </div>
             </div>
@@ -2023,17 +2032,78 @@
         function toggleExportDropdown() {
             const dropdown = document.getElementById('exportDropdown');
             dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+            document.getElementById('importDropdown').style.display = 'none';
+        }
+
+        function toggleImportDropdown() {
+            const dropdown = document.getElementById('importDropdown');
+            dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+            document.getElementById('exportDropdown').style.display = 'none';
         }
 
         function closeExportDropdown() {
             document.getElementById('exportDropdown').style.display = 'none';
         }
 
-        // Close dropdown when clicking outside
+        function closeImportDropdown() {
+            document.getElementById('importDropdown').style.display = 'none';
+        }
+
+        let pendingImportType = 'json';
+
+        function importFile(type) {
+            pendingImportType = type;
+            const input = document.getElementById('importFileInput');
+            input.accept = type === 'json' ? '.json' : type === 'csv' ? '.csv' : '.kml';
+            input.click();
+            closeImportDropdown();
+        }
+
+        function handleImportFile() {
+            const input = document.getElementById('importFileInput');
+            const file = input.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const endpoint = pendingImportType === 'json' ? '/api/import/json' : pendingImportType === 'csv' ? '/api/import/csv' : '/api/import/kml';
+
+            fetch(endpoint, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert(data.message);
+                    loadDetections();
+                    loadCumulativeDetections();
+                    updateStats();
+                } else {
+                    alert('Import error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Import error:', error);
+                alert('Import failed: ' + error.message);
+            });
+
+            // Reset input so same file can be re-selected
+            input.value = '';
+        }
+
+        // Close dropdowns when clicking outside
         document.addEventListener('click', function(event) {
-            const dropdown = document.querySelector('.export-dropdown');
-            if (!dropdown.contains(event.target)) {
+            const exportDD = document.querySelector('.export-dropdown');
+            const allDropdowns = document.querySelectorAll('.export-dropdown');
+            let clickedInside = false;
+            allDropdowns.forEach(dd => {
+                if (dd.contains(event.target)) clickedInside = true;
+            });
+            if (!clickedInside) {
                 closeExportDropdown();
+                closeImportDropdown();
             }
         });
 

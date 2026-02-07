@@ -270,6 +270,18 @@ def flock_reader():
                             try:
                                 data = json.loads(line)
                                 if 'detection_method' in data:
+                                    # Map ESP32 GPS from phone to Flask GPS format
+                                    esp_gps = data.get('gps')
+                                    if esp_gps:
+                                        data['gps'] = {
+                                            'latitude': esp_gps.get('latitude'),
+                                            'longitude': esp_gps.get('longitude'),
+                                            'fix_quality': 1,
+                                            'match_quality': 'esp32_phone_gps',
+                                            'time_diff': 0,
+                                        }
+                                        if esp_gps.get('accuracy') is not None:
+                                            data['gps']['accuracy'] = esp_gps['accuracy']
                                     # This is a detection, add it
                                     add_detection_from_serial(data)
                                 else:
@@ -963,6 +975,229 @@ def export_kml():
         f.write(kml_content)
     
     return send_file(filepath, as_attachment=True, download_name=filename)
+
+@app.route('/api/import/json', methods=['POST'])
+def import_json():
+    """Import detections from a JSON file (exported from ESP32 Flock-You dashboard)"""
+    global detections, cumulative_detections, next_detection_id
+
+    if 'file' not in request.files:
+        return jsonify({'status': 'error', 'message': 'No file provided'}), 400
+
+    file = request.files['file']
+    if not file.filename:
+        return jsonify({'status': 'error', 'message': 'No file selected'}), 400
+
+    try:
+        content = file.read().decode('utf-8')
+        imported = json.loads(content)
+
+        if not isinstance(imported, list):
+            imported = [imported]
+
+        count = 0
+        for item in imported:
+            # Map ESP32 export fields to Flask detection format
+            data = {
+                'detection_method': item.get('method', item.get('detection_method', 'unknown')),
+                'protocol': 'bluetooth_le',
+                'mac_address': item.get('mac', item.get('mac_address', '')),
+                'device_name': item.get('name', item.get('device_name', '')),
+                'rssi': item.get('rssi', 0),
+                'detection_count': item.get('count', item.get('detection_count', 1)),
+            }
+
+            # Raven fields
+            if item.get('raven') or item.get('is_raven'):
+                data['is_raven'] = True
+                data['raven_fw'] = item.get('fw', item.get('raven_fw', ''))
+
+            # GPS fields from ESP32 wardriving export
+            gps_obj = item.get('gps')
+            if gps_obj and (gps_obj.get('lat') or gps_obj.get('latitude')):
+                data['gps'] = {
+                    'latitude': gps_obj.get('lat', gps_obj.get('latitude')),
+                    'longitude': gps_obj.get('lon', gps_obj.get('longitude')),
+                    'altitude': gps_obj.get('alt', gps_obj.get('altitude', 0)),
+                    'fix_quality': 1,
+                    'match_quality': 'esp32_phone_gps',
+                    'time_diff': 0,
+                }
+                if gps_obj.get('acc') is not None:
+                    data['gps']['accuracy'] = gps_obj['acc']
+
+            add_detection_from_serial(data)
+            count += 1
+
+        print(f"Imported {count} detections from JSON file: {file.filename}")
+        return jsonify({'status': 'success', 'message': f'Imported {count} detections', 'count': count})
+
+    except json.JSONDecodeError as e:
+        return jsonify({'status': 'error', 'message': f'Invalid JSON: {str(e)}'}), 400
+    except Exception as e:
+        print(f"JSON import error: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@app.route('/api/import/csv', methods=['POST'])
+def import_csv():
+    """Import detections from a CSV file (exported from ESP32 Flock-You dashboard)"""
+    global detections, cumulative_detections, next_detection_id
+
+    if 'file' not in request.files:
+        return jsonify({'status': 'error', 'message': 'No file provided'}), 400
+
+    file = request.files['file']
+    if not file.filename:
+        return jsonify({'status': 'error', 'message': 'No file selected'}), 400
+
+    try:
+        content = file.read().decode('utf-8')
+        reader = csv.DictReader(content.splitlines())
+
+        count = 0
+        for row in reader:
+            data = {
+                'detection_method': row.get('method', row.get('detection_method', 'unknown')),
+                'protocol': 'bluetooth_le',
+                'mac_address': row.get('mac', row.get('mac_address', '')),
+                'device_name': row.get('name', row.get('device_name', '')),
+                'rssi': int(row.get('rssi', 0)) if row.get('rssi') else 0,
+                'detection_count': int(row.get('count', row.get('detection_count', 1))) if row.get('count', row.get('detection_count')) else 1,
+            }
+
+            # Raven fields
+            is_raven = row.get('is_raven', row.get('raven', 'false'))
+            if is_raven and is_raven.lower() == 'true':
+                data['is_raven'] = True
+                data['raven_fw'] = row.get('raven_fw', row.get('fw', ''))
+
+            # GPS fields from ESP32 wardriving CSV export
+            lat_str = row.get('latitude', '')
+            lon_str = row.get('longitude', '')
+            if lat_str and lon_str:
+                try:
+                    data['gps'] = {
+                        'latitude': float(lat_str),
+                        'longitude': float(lon_str),
+                        'fix_quality': 1,
+                        'match_quality': 'esp32_phone_gps',
+                        'time_diff': 0,
+                    }
+                    acc_str = row.get('gps_accuracy', '')
+                    if acc_str:
+                        data['gps']['accuracy'] = float(acc_str)
+                except (ValueError, TypeError):
+                    pass  # Skip GPS if values are invalid
+
+            add_detection_from_serial(data)
+            count += 1
+
+        print(f"Imported {count} detections from CSV file: {file.filename}")
+        return jsonify({'status': 'success', 'message': f'Imported {count} detections', 'count': count})
+
+    except Exception as e:
+        print(f"CSV import error: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@app.route('/api/import/kml', methods=['POST'])
+def import_kml():
+    """Import detections from a KML file (exported from ESP32 Flock-You dashboard)"""
+    import xml.etree.ElementTree as ET
+
+    if 'file' not in request.files:
+        return jsonify({'status': 'error', 'message': 'No file provided'}), 400
+
+    file = request.files['file']
+    if not file.filename:
+        return jsonify({'status': 'error', 'message': 'No file selected'}), 400
+
+    try:
+        content = file.read().decode('utf-8')
+        root = ET.fromstring(content)
+
+        # Handle KML namespace
+        ns = {'kml': 'http://www.opengis.net/kml/2.2'}
+        placemarks = root.findall('.//kml:Placemark', ns)
+        if not placemarks:
+            # Try without namespace (some KML generators omit it)
+            placemarks = root.findall('.//Placemark')
+
+        count = 0
+        for pm in placemarks:
+            name_el = pm.find('kml:name', ns) or pm.find('name')
+            desc_el = pm.find('kml:description', ns) or pm.find('description')
+            coord_el = pm.find('.//kml:coordinates', ns) or pm.find('.//coordinates')
+
+            mac = name_el.text.strip() if name_el is not None and name_el.text else f"unknown_{count}"
+
+            # Parse coordinates (lon,lat,alt)
+            gps_data = None
+            if coord_el is not None and coord_el.text:
+                parts = coord_el.text.strip().split(',')
+                if len(parts) >= 2:
+                    try:
+                        lon = float(parts[0])
+                        lat = float(parts[1])
+                        alt = float(parts[2]) if len(parts) > 2 else 0
+                        gps_data = {
+                            'latitude': lat,
+                            'longitude': lon,
+                            'altitude': alt,
+                            'fix_quality': 1,
+                            'match_quality': 'esp32_kml_import',
+                            'time_diff': 0,
+                        }
+                    except (ValueError, TypeError):
+                        pass
+
+            # Parse description for metadata
+            desc_text = desc_el.text.strip() if desc_el is not None and desc_el.text else ""
+            device_name = ""
+            method = "kml_import"
+            rssi = 0
+            det_count = 1
+
+            # Try to extract fields from CDATA description
+            import re
+            name_match = re.search(r'<b>Name:</b>\s*([^<]+)', desc_text)
+            if name_match:
+                device_name = name_match.group(1).strip()
+            method_match = re.search(r'<b>Method:</b>\s*([^<]+)', desc_text)
+            if method_match:
+                method = method_match.group(1).strip()
+            rssi_match = re.search(r'<b>RSSI:</b>\s*(-?\d+)', desc_text)
+            if rssi_match:
+                rssi = int(rssi_match.group(1))
+            count_match = re.search(r'<b>Count:</b>\s*(\d+)', desc_text)
+            if count_match:
+                det_count = int(count_match.group(1))
+
+            data = {
+                'detection_method': method,
+                'protocol': 'bluetooth_le',
+                'mac_address': mac,
+                'device_name': device_name,
+                'rssi': rssi,
+                'detection_count': det_count,
+            }
+
+            if gps_data:
+                data['gps'] = gps_data
+
+            add_detection_from_serial(data)
+            count += 1
+
+        print(f"Imported {count} detections from KML file: {file.filename}")
+        return jsonify({'status': 'success', 'message': f'Imported {count} detections from KML', 'count': count})
+
+    except ET.ParseError as e:
+        return jsonify({'status': 'error', 'message': f'Invalid KML: {str(e)}'}), 400
+    except Exception as e:
+        print(f"KML import error: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
 
 @app.route('/api/clear', methods=['POST'])
 def clear_detections():
