@@ -155,7 +155,7 @@ static unsigned long fyGPSLastUpdate = 0;
 // Session persistence (SPIFFS)
 #define FY_SESSION_FILE  "/session.json"
 #define FY_PREV_FILE     "/prev_session.json"
-#define FY_SAVE_INTERVAL 60000  // Auto-save every 60 seconds
+#define FY_SAVE_INTERVAL 15000  // Auto-save every 15 seconds (prevent data loss on quick power-cycle)
 static unsigned long fyLastSave = 0;
 static int fyLastSaveCount = 0;  // Track changes to avoid unnecessary writes
 static bool fySpiffsReady = false;
@@ -533,14 +533,40 @@ static void fySaveSession() {
 }
 
 static void fyPromotePrevSession() {
-    // Move current session file to prev_session on boot
+    // Copy current session to prev_session on boot, then delete original
+    // NOTE: SPIFFS.rename() is unreliable on ESP32 — use copy+delete instead
     if (!fySpiffsReady) return;
-    if (SPIFFS.exists(FY_SESSION_FILE)) {
-        // Remove old prev if exists
-        if (SPIFFS.exists(FY_PREV_FILE)) SPIFFS.remove(FY_PREV_FILE);
-        SPIFFS.rename(FY_SESSION_FILE, FY_PREV_FILE);
-        printf("[FLOCK-YOU] Prior session promoted from flash\n");
+    if (!SPIFFS.exists(FY_SESSION_FILE)) {
+        printf("[FLOCK-YOU] No prior session file to promote\n");
+        return;
     }
+
+    File src = SPIFFS.open(FY_SESSION_FILE, "r");
+    if (!src) {
+        printf("[FLOCK-YOU] Failed to open session file for promotion\n");
+        return;
+    }
+    String data = src.readString();
+    src.close();
+
+    if (data.length() == 0) {
+        printf("[FLOCK-YOU] Session file empty, skipping promotion\n");
+        SPIFFS.remove(FY_SESSION_FILE);
+        return;
+    }
+
+    // Write to prev_session (overwrite any existing)
+    File dst = SPIFFS.open(FY_PREV_FILE, "w");
+    if (!dst) {
+        printf("[FLOCK-YOU] Failed to create prev_session file\n");
+        return;
+    }
+    dst.print(data);
+    dst.close();
+
+    // Delete the old session file so it doesn't get re-promoted next boot
+    SPIFFS.remove(FY_SESSION_FILE);
+    printf("[FLOCK-YOU] Prior session promoted: %d bytes\n", data.length());
 }
 
 // ============================================================================
@@ -847,34 +873,51 @@ static void fySetupServer() {
             r->send(404, "application/json", "{\"error\":\"no prior session\"}");
             return;
         }
-        AsyncResponseStream *resp = r->beginResponseStream("application/vnd.google-earth.kml+xml");
-        resp->addHeader("Content-Disposition", "attachment; filename=\"flockyou_prev_session.kml\"");
-        // Read prev session and generate KML
         File f = SPIFFS.open(FY_PREV_FILE, "r");
         if (!f) { r->send(500, "text/plain", "read error"); return; }
         String content = f.readString();
         f.close();
+        if (content.length() == 0) {
+            r->send(404, "application/json", "{\"error\":\"prior session empty\"}");
+            return;
+        }
+        AsyncResponseStream *resp = r->beginResponseStream("application/vnd.google-earth.kml+xml");
+        resp->addHeader("Content-Disposition", "attachment; filename=\"flockyou_prev_session.kml\"");
         resp->print("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
                     "<kml xmlns=\"http://www.opengis.net/kml/2.2\">\n<Document>\n"
-                    "<name>Flock-You Prior Session</name>\n");
+                    "<name>Flock-You Prior Session</name>\n"
+                    "<description>Surveillance device detections from prior session</description>\n"
+                    "<Style id=\"det\"><IconStyle><color>ff4489ec</color>"
+                    "<scale>1.0</scale></IconStyle></Style>\n"
+                    "<Style id=\"raven\"><IconStyle><color>ff4444ef</color>"
+                    "<scale>1.2</scale></IconStyle></Style>\n");
         // Parse JSON array and emit placemarks
         JsonDocument doc;
         DeserializationError err = deserializeJson(doc, content);
         if (!err && doc.is<JsonArray>()) {
+            int placed = 0;
             for (JsonObject d : doc.as<JsonArray>()) {
                 JsonObject gps = d["gps"];
                 if (!gps || !gps.containsKey("lat")) continue;
+                bool isRaven = d["raven"] | false;
                 resp->printf("<Placemark><name>%s</name>\n", d["mac"] | "?");
+                resp->printf("<styleUrl>#%s</styleUrl>\n", isRaven ? "raven" : "det");
                 resp->print("<description><![CDATA[");
                 if (d["name"].is<const char*>() && strlen(d["name"] | "") > 0)
                     resp->printf("<b>Name:</b> %s<br/>", d["name"] | "");
                 resp->printf("<b>Method:</b> %s<br/><b>RSSI:</b> %d<br/><b>Count:</b> %d",
                     d["method"] | "?", d["rssi"] | 0, d["count"] | 1);
+                if (isRaven && d["fw"].is<const char*>())
+                    resp->printf("<br/><b>Raven FW:</b> %s", d["fw"] | "");
                 resp->print("]]></description>\n");
                 resp->printf("<Point><coordinates>%.8f,%.8f,0</coordinates></Point>\n",
                     (double)(gps["lon"] | 0.0), (double)(gps["lat"] | 0.0));
                 resp->print("</Placemark>\n");
+                placed++;
             }
+            printf("[FLOCK-YOU] Prior session KML: %d placemarks\n", placed);
+        } else {
+            printf("[FLOCK-YOU] Prior session KML: JSON parse failed\n");
         }
         resp->print("</Document>\n</kml>");
         r->send(resp);
@@ -984,11 +1027,17 @@ void loop() {
         }
     }
 
-    // Auto-save session to SPIFFS every 60s if detections changed
+    // Auto-save session to SPIFFS every 15s if detections changed
+    // Also triggers an early save 5s after first detection to minimize loss on power-cycle
     if (fySpiffsReady && millis() - fyLastSave >= FY_SAVE_INTERVAL) {
         if (fyDetCount > 0 && fyDetCount != fyLastSaveCount) {
             fySaveSession();
         }
+        fyLastSave = millis();
+    } else if (fySpiffsReady && fyDetCount > 0 && fyLastSaveCount == 0 &&
+               millis() - fyLastSave >= 5000) {
+        // Quick first-save: persist within 5s of first detection
+        fySaveSession();
         fyLastSave = millis();
     }
 
